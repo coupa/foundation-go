@@ -2,7 +2,7 @@ package foundation
 
 import (
 	"testing"
-	"foundation-go/logging"
+	"github.com/coupa/foundation-go/logging"
 )
 
 func TestFoundation(t *testing.T) {

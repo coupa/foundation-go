@@ -5,8 +5,8 @@ package foundation
 
 import (
 	log "github.com/sirupsen/logrus"
-	"foundation-go/logging"
-	"foundation-go/metrics"
+	"github.com/coupa/foundation-go/logging"
+	"github.com/coupa/foundation-go/metrics"
 )
 
 func InitMetricsMonitoring(projectName string, appName string, appVersion string) {

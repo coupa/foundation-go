@@ -10,8 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
-	"foundation-go/logging"
-	"foundation-go/metrics"
+	"github.com/coupa/foundation-go/logging"
+	"github.com/coupa/foundation-go/metrics"
 )
 
 var CORRELATION_ID_HEADER = "X-CORRELATION-ID"

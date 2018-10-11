@@ -30,6 +30,7 @@ func InitMetrics(projectName string, appName string, appVersion string, componen
 }
 
 func getStatsUrl() string {
+	// See Usage section in https://github.com/coupa-ops/docker-builds/tree/master/statsd for default url
 	var url = "172.17.0.1:8125"
 
 	// For local testing or else, statsD url can be overridden using env variable

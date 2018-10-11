@@ -2,7 +2,7 @@ SRCROOT ?= $(realpath .)
 BUILD_ROOT ?= $(SRCROOT)
 
 # These are paths used in the docker image
-SRCROOT_D = /go/src/foundation-go
+SRCROOT_D = /go/src/github.com/coupa/foundation-go
 BUILD_ROOT_D = $(SRCROOT_D)/tmp/dist
 
 GOLANG_VER = 1.11.1

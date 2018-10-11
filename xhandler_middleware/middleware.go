@@ -6,7 +6,7 @@ import (
 	"golang.org/x/net/context"
 	"net/http"
 	"time"
-	"foundation-go/logging"
+	"github.com/coupa/foundation-go/logging"
 )
 
 func LoggingMiddleware(handler xhandler.HandlerC, ctx context.Context, w http.ResponseWriter, r *http.Request) {
