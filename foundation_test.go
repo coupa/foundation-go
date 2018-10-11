@@ -1,8 +1,8 @@
-package common
+package foundation
 
 import (
 	"testing"
-	"common-go/logging"
+	"foundation-go/logging"
 )
 
 func TestFoundation(t *testing.T) {
@@ -19,7 +19,7 @@ func TestInit(t *testing.T) {
 	}
 
 	for _, table := range tables {
-		InitMetricsMonitoring(table.project, table.app, table.ver, table.component)
+		InitMetricsMonitoringOnComponent(table.project, table.app, table.ver, table.component)
 		if logging.LoggingApp != table.app {
 			t.Errorf("Logging app not initialized")
 		}

@@ -3,6 +3,6 @@ services:
   tests:
     image: golang:1.11.1
     command: "go test -p 1 ./..."
-    working_dir: /go/src/common-go
+    working_dir: /go/src/foundation-go
     volumes:
-      - .:/go/src/common-go
+      - .:/go/src/foundation-go

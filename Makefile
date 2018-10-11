@@ -2,8 +2,10 @@ SRCROOT ?= $(realpath .)
 BUILD_ROOT ?= $(SRCROOT)
 
 # These are paths used in the docker image
-SRCROOT_D = /go/src/common-go
+SRCROOT_D = /go/src/foundation-go
 BUILD_ROOT_D = $(SRCROOT_D)/tmp/dist
+
+GOLANG_VER = 1.11.1
 
 default: test
 
@@ -13,7 +15,7 @@ test: dist
 
 build: vendor
 	CGO_ENABLED=0 GO15VENDOREXPERIMENT=1 go build -x \
-	-o $(BUILD_ROOT)/common \
+	-o $(BUILD_ROOT)/foundation \
 	.
 
 vendor: clean $(GOPATH)/bin/dep
@@ -24,19 +26,19 @@ $(GOPATH)/bin/dep:
 
 # Used primarily to test, build is not much of use for a library in itself (which doesnt have a main package)
 dist:
-	docker pull golang:1.11.1
+	docker pull golang:$(GOLANG_VER)
 
     # Mount using -v source folder
     # Pass in env variables using -e for src root
 	docker run --rm \
-	           -v $(SRCROOT):$(SRCROOT_D) \
-	           -w $(SRCROOT_D) \
-	           -e BUILD_ROOT=$(BUILD_ROOT_D) \
-               -e SRCROOT=$(SRCROOT_D) \
-               -e UID=`id -u` \
-               -e GID=`id -g` \
-	           golang:1.11.1 \
-	           make distbuild
+        -v $(SRCROOT):$(SRCROOT_D) \
+        -w $(SRCROOT_D) \
+        -e BUILD_ROOT=$(BUILD_ROOT_D) \
+        -e SRCROOT=$(SRCROOT_D) \
+        -e UID=`id -u` \
+        -e GID=`id -g` \
+        golang:$(GOLANG_VER) \
+        make distbuild
 
 distbuild: clean build
 	chown -R $(UID):$(GID) $(SRCROOT)

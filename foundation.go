@@ -1,15 +1,19 @@
 /**
  * Entry point for initializing common modules and or common utility functions
  */
-package common
+package foundation
 
 import (
 	log "github.com/sirupsen/logrus"
-	"common-go/logging"
-	"common-go/metrics"
+	"foundation-go/logging"
+	"foundation-go/metrics"
 )
 
-func InitMetricsMonitoring(projectName string, appName string, appVersion string, componentName string) {
+func InitMetricsMonitoring(projectName string, appName string, appVersion string) {
+	InitMetricsMonitoringOnComponent(projectName, appName, appVersion, "")
+}
+
+func InitMetricsMonitoringOnComponent(projectName string, appName string, appVersion string, componentName string) {
 	logging.InitLogging(projectName, appName, appVersion)
 	logging.EnableJsonFormat()
 

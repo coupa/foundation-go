@@ -10,18 +10,31 @@ import (
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
-	"common-go/logging"
-	"common-go/metrics"
+	"foundation-go/logging"
+	"foundation-go/metrics"
 )
 
-var REQUEST_ID_HEADER = "X-Request-Id"
-var COUPA_INSTANCE_HEADER = "X-COUPA-Instance"
+var CORRELATION_ID_HEADER = "X-CORRELATION-ID"
 
-var ID_INDEX_IN_URL_VAR = "Id_Index_In_Url"
+// Obsolete instance ID header
+var COUPA_INSTANCE_ID_HEADER = "X-COUPA-Instance"
+// New instance ID header as per latest standards
+var ENTERPRISE_INSTANCE_ID_HEADER = "X-ENTERPRISE-INSTANCE-ID"
+
+// The variable to set on to gin.Context to denote the index
+// at which to terminate the URL at. This is useful for URLs where
+// we have variable entity IDs being passed e.g. /v1/entity/3445
+// For metrics it would be desirable to use /v1/entity rather than /v1/entity/3445
+// To achieve the same client should pass index aa 2 via following code:
+//     gin.Context.Set(gin_middleware.URL_TERMINATION_INDEX_VAR, 2)
+var URL_TERMINATION_INDEX_VAR = "URL_TERMINATION_IDX"
 
 // --------------------------------------------------------------------------
-func RequestIdMiddleware(c *gin.Context) {
-	c.Writer.Header().Set(REQUEST_ID_HEADER, uuid.NewV4().String())
+func CorrelationIdMiddleware(c *gin.Context) {
+	correlation_id := c.Writer.Header().Get(CORRELATION_ID_HEADER)
+	if (correlation_id == "") {
+		c.Writer.Header().Set(CORRELATION_ID_HEADER, uuid.NewV4().String())
+	}
 	c.Next()
 }
 
@@ -36,11 +49,11 @@ func LoggingMiddleware(c *gin.Context) {
 
 	// access the status we are sending
 	status := c.Writer.Status()
-	request_id := c.Writer.Header().Get(REQUEST_ID_HEADER)
-	instance := c.Request.Header.Get(COUPA_INSTANCE_HEADER)
+	request_id := c.Writer.Header().Get(CORRELATION_ID_HEADER)
+	instance := getInstanceId(c)
 
 	log.WithFields(log.Fields{
-		"duration":             latency.Seconds(),
+		"duration":             latency.Seconds()*1000,
 		"status":               status,
 		"correlation_id":       request_id,
 		"EnterpriseInstanceId": instance,
@@ -54,7 +67,7 @@ func LoggingMiddleware(c *gin.Context) {
 }
 
 func MetricsMiddleware(c *gin.Context) {
-	instance := c.Request.Header.Get(COUPA_INSTANCE_HEADER)
+	instance := getInstanceId(c)
 	url := getDelimitedURLForStats(c)
 
 	tags := metrics.Tags{EnterpriseInstanceId: instance, Name: url}
@@ -63,6 +76,15 @@ func MetricsMiddleware(c *gin.Context) {
 }
 
 // --------------------------------------------------------------------------
+func getInstanceId(c *gin.Context) string {
+	instance := c.Request.Header.Get(ENTERPRISE_INSTANCE_ID_HEADER)
+	if (instance == "") {
+		// Fallback to obsolete instance in case not found
+		instance = c.Request.Header.Get(COUPA_INSTANCE_ID_HEADER)
+	}
+	return instance
+}
+
 func getDelimitedURLForStats(c *gin.Context) string {
 	url := strings.Replace(c.Request.URL.Path, "/", ".", -1)
 	if strings.HasPrefix(url, ".") {
@@ -70,7 +92,7 @@ func getDelimitedURLForStats(c *gin.Context) string {
 	}
 
 	// If there is an ID in the index, we want to stop generating unique URLs from that point onwards
-	idx := c.GetInt(ID_INDEX_IN_URL_VAR)
+	idx := c.GetInt(URL_TERMINATION_INDEX_VAR)
 	if idx > 0 {
 		urlSplice := strings.Split(url, ".")
 		if len(urlSplice) > idx {
