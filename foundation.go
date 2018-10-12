@@ -10,19 +10,14 @@ import (
 )
 
 func InitMetricsMonitoring(projectName string, appName string, appVersion string) {
-	InitMetricsMonitoringOnComponent(projectName, appName, appVersion, "")
-}
-
-func InitMetricsMonitoringOnComponent(projectName string, appName string, appVersion string, componentName string) {
 	logging.InitLogging(projectName, appName, appVersion)
 	logging.EnableJsonFormat()
 
-	metrics.InitMetrics(projectName, appName, appVersion, componentName)
+	metrics.InitMetrics(projectName, appName, appVersion)
 
 	log.WithFields(log.Fields{
 		"project":    projectName,
 		"app":        appName,
-		"component":  componentName,
 		"appVersion": appVersion,
 	}).Info("MetricsMonitoring initialized")
 

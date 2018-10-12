@@ -14,12 +14,12 @@ import (
 	"github.com/coupa/foundation-go/metrics"
 )
 
-var CORRELATION_ID_HEADER = "X-CORRELATION-ID"
+const CORRELATION_ID_HEADER = "X-CORRELATION-ID"
 
 // Obsolete instance ID header
-var COUPA_INSTANCE_ID_HEADER = "X-COUPA-Instance"
+const COUPA_INSTANCE_ID_HEADER = "X-COUPA-Instance"
 // New instance ID header as per latest standards
-var ENTERPRISE_INSTANCE_ID_HEADER = "X-ENTERPRISE-INSTANCE-ID"
+const ENTERPRISE_INSTANCE_ID_HEADER = "X-ENTERPRISE-INSTANCE-ID"
 
 // The variable to set on to gin.Context to denote the index
 // at which to terminate the URL at. This is useful for URLs where
@@ -27,7 +27,7 @@ var ENTERPRISE_INSTANCE_ID_HEADER = "X-ENTERPRISE-INSTANCE-ID"
 // For metrics it would be desirable to use /v1/entity rather than /v1/entity/3445
 // To achieve the same client should pass index aa 2 via following code:
 //     gin.Context.Set(gin_middleware.URL_TERMINATION_INDEX_VAR, 2)
-var URL_TERMINATION_INDEX_VAR = "URL_TERMINATION_IDX"
+const URL_TERMINATION_INDEX_VAR = "URL_TERMINATION_IDX"
 
 // --------------------------------------------------------------------------
 func CorrelationIdMiddleware(c *gin.Context) {
@@ -70,9 +70,11 @@ func MetricsMiddleware(c *gin.Context) {
 	instance := getInstanceId(c)
 	url := getDelimitedURLForStats(c)
 
-	tags := metrics.Tags{EnterpriseInstanceId: instance, Name: url}
-	metrics.StatsIncrementWithTags("events.api.requests", tags)
-	metrics.StatsTimeWithTags(c.Next /* Func to invoke */, "transactions.api.latency", tags)
+	tags := metrics.Tags{EnterpriseInstanceId: instance, Name: "api.requests." + url}
+	metrics.StatsIncrementWithTags("events", tags)
+
+	tags = metrics.Tags{EnterpriseInstanceId: instance, Name: "api.latency." + url}
+	metrics.StatsTimeWithTags(c.Next /* Func to invoke */, "transactions", tags)
 }
 
 // --------------------------------------------------------------------------

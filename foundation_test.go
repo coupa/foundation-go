@@ -13,13 +13,12 @@ func TestInit(t *testing.T) {
 		project string
 		app   string
 		ver  string
-		component string
 	}{
-		{"p", "a", "v", "c"},
+		{"p", "a", "v"},
 	}
 
 	for _, table := range tables {
-		InitMetricsMonitoringOnComponent(table.project, table.app, table.ver, table.component)
+		InitMetricsMonitoring(table.project, table.app, table.ver)
 		if logging.LoggingApp != table.app {
 			t.Errorf("Logging app not initialized")
 		}

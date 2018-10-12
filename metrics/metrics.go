@@ -11,6 +11,7 @@ import (
 )
 
 type Tags struct {
+	component            string
 	Name                 string
 	EnterpriseInstanceId string
 	ErrorCode            string
@@ -19,13 +20,11 @@ type Tags struct {
 var version = ""
 var project = ""
 var app = ""
-var component = ""
 
 // ----------------------------------------------------------------------------
-func InitMetrics(projectName string, appName string, appVersion string, componentName string) {
+func InitMetrics(projectName string, appName string, appVersion string) {
 	project = projectName
 	app = appName
-	component = componentName
 	version = appVersion
 }
 
@@ -40,11 +39,11 @@ func getStatsUrl() string {
 	return url
 }
 
-func getStatsHost() string {
-	var host = "app.io.coupahost.com"
+func getStatsInstanceName() string {
+	var host = "unknown_instance_name"
 
-	if os.Getenv("STATSD_HOST") != "" {
-		host = os.Getenv("STATSD_HOST")
+	if os.Getenv("STATSD_INSTANCE_NAME") != "" {
+		host = os.Getenv("STATSD_INSTANCE_NAME")
 	}
 	return host
 }
@@ -53,8 +52,8 @@ func GetStatsD(t Tags) *statsd.Client {
 	statsDClient, err := statsd.New(
 		statsd.Address(getStatsUrl()),
 		statsd.TagsFormat(statsd.InfluxDB),
-		statsd.Prefix(getStatsHost()+"./."+project+"."),
-		statsd.Tags("version", version, "app", app, "component", component,
+		statsd.Prefix(getStatsInstanceName()+"./."+project+"."),
+		statsd.Tags("version", version, "app", app, "component", t.component,
 			"enterprise_instance_id", t.EnterpriseInstanceId, "name", t.Name,
 			"error_code", t.ErrorCode),
 	)
