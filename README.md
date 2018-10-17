@@ -97,6 +97,6 @@ The key should of format: <metric-name>.* and should not contain project, applic
 
 ### Env variables
 
-* STATSD_HOST: Determines the statsD prefix for the metrics. Default 'app.io.coupahost.com'
+* STATSD_INSTANCE_NAME: Determines the statsD prefix for the metrics. Default to 'unknown_instance_name'
 * STATSD_URL: The statsD url and port. Useful for e.g. for local dev testing. Defaults to '172.17.0.1:8125'
 

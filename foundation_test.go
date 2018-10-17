@@ -5,9 +5,6 @@ import (
 	"github.com/coupa/foundation-go/logging"
 )
 
-func TestFoundation(t *testing.T) {
-}
-
 func TestInit(t *testing.T) {
 	tables := []struct {
 		project string
