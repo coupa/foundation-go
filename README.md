@@ -1,6 +1,6 @@
-# Common Golang library for Coupa
+# Foundational Golang library for Coupa
 
-This repository hosts common golang code for use in all Golang based Coupa applications.
+This repository hosts foundational golang code for use in all Golang based Coupa applications.
 
 ## Getting Started
 
@@ -22,14 +22,14 @@ make test
 
 Importing the library:
 ```
-import "github.com/coupa/common-go"
+import "github.com/coupa/foundation-go"
 ```
 
 Metrics and monitoring usage initialization:
 ```
-import "github.com/coupa/common-go"
+import "github.com/coupa/foundation-go"
 
-common.InitMetricsMonitoring(<project-name>, <app-name>, <app-version>, <component-name>)
+foundation.InitMetricsMonitoring(<project-name>, <app-name>, <app-version>, <component-name>)
 ```
 NOTE: Project name, App name and Component Name are required arguments
 
@@ -42,7 +42,7 @@ Plans are to onboard xMux as well (https://github.com/rs/xmux)
 RequestIdMiddleware:- Adds request ID to each incoming request (if absent). This ID acts as a correlation ID for correlating
 info between applications.
 ```
-import "github.com/coupa/common-go/gin_middleware"
+import "github.com/coupa/foundation-go/gin_middleware"
 
 rengine := gin.New()
 rengine.Use(gin_middleware.RequestIdMiddleware)
@@ -50,7 +50,7 @@ rengine.Use(gin_middleware.RequestIdMiddleware)
 
 LoggingMiddleware:- Emits standardized logs to each web API request, along with the latency info, in JSON format.
 ```
-import "github.com/coupa/common-go/gin_middleware"
+import "github.com/coupa/foundation-go/gin_middleware"
 
 rengine := gin.New()
 rengine.Use(gin_middleware.LoggingMiddleware)
@@ -58,7 +58,7 @@ rengine.Use(gin_middleware.LoggingMiddleware)
 
 MetricsMiddleware:- Emits statsD counters to each web API request, along with the latency time durations.
 ```
-import "github.com/coupa/common-go/gin_middleware"
+import "github.com/coupa/foundation-go/gin_middleware"
 
 rengine := gin.New()
 rengine.Use(gin_middleware.MetricsMiddleware)
@@ -69,9 +69,9 @@ rengine.Use(gin_middleware.MetricsMiddleware)
 Assumption is that application is using Sirupsen for logging. JSON format will be enabled by the library. Example log:
 ```
 import log "github.com/sirupsen/logrus"
-import "github.com/coupa/common-go/logging"
+import "github.com/coupa/foundation-go/logging"
 
-// Below two lines not needed if using common.InitMetricsMonitoring...
+// Below two lines not needed if using foundation.InitMetricsMonitoring...
 logging.InitLogging(<project-name>, <app-name>, <app-version>)
 logging.EnableJsonFormat()
 
@@ -85,7 +85,7 @@ log.WithFields(log.Fields{
 
 Following statsD APIs are available to use by the application in it's code:
 ```
-import "github.com/coupa/common-go/metrics"
+import "github.com/coupa/foundation-go/metrics"
 
 StatsIncrement(key string)
 StatsIncrementWithTags(key string, tags Tags)
