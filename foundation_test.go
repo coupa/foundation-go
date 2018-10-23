@@ -1,15 +1,15 @@
 package foundation
 
 import (
-	"testing"
 	"github.com/coupa/foundation-go/logging"
+	"testing"
 )
 
 func TestInit(t *testing.T) {
 	tables := []struct {
 		project string
-		app   string
-		ver  string
+		app     string
+		ver     string
 	}{
 		{"p", "a", "v"},
 	}

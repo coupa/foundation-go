@@ -22,4 +22,3 @@ func EnableJsonFormat() {
 	// Log as JSON instead of the default ASCII formatter.
 	log.SetFormatter(&log.JSONFormatter{})
 }
-

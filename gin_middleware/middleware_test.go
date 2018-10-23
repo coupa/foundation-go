@@ -1,10 +1,10 @@
 package gin_middleware
 
 import (
-	"testing"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/url"
+	"testing"
 )
 
 func TestDelimitedURLForStats(t *testing.T) {

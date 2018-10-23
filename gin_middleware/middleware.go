@@ -5,19 +5,20 @@
 package gin_middleware
 
 import (
+	"github.com/coupa/foundation-go/logging"
+	"github.com/coupa/foundation-go/metrics"
 	"github.com/gin-gonic/gin"
 	"github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
-	"github.com/coupa/foundation-go/logging"
-	"github.com/coupa/foundation-go/metrics"
 )
 
 const CORRELATION_ID_HEADER = "X-CORRELATION-ID"
 
 // Obsolete instance ID header
 const COUPA_INSTANCE_ID_HEADER = "X-COUPA-Instance"
+
 // New instance ID header as per latest standards
 const ENTERPRISE_INSTANCE_ID_HEADER = "X-ENTERPRISE-INSTANCE-ID"
 
@@ -32,7 +33,7 @@ const URL_TERMINATION_INDEX_VAR = "URL_TERMINATION_IDX"
 // --------------------------------------------------------------------------
 func CorrelationIdMiddleware(c *gin.Context) {
 	correlation_id := c.Writer.Header().Get(CORRELATION_ID_HEADER)
-	if (correlation_id == "") {
+	if correlation_id == "" {
 		c.Writer.Header().Set(CORRELATION_ID_HEADER, uuid.NewV4().String())
 	}
 	c.Next()
@@ -53,7 +54,7 @@ func LoggingMiddleware(c *gin.Context) {
 	instance := getInstanceId(c)
 
 	log.WithFields(log.Fields{
-		"duration":             latency.Seconds()*1000,
+		"duration":             latency.Seconds() * 1000,
 		"status":               status,
 		"correlation_id":       request_id,
 		"EnterpriseInstanceId": instance,
@@ -80,7 +81,7 @@ func MetricsMiddleware(c *gin.Context) {
 // --------------------------------------------------------------------------
 func getInstanceId(c *gin.Context) string {
 	instance := c.Request.Header.Get(ENTERPRISE_INSTANCE_ID_HEADER)
-	if (instance == "") {
+	if instance == "" {
 		// Fallback to obsolete instance in case not found
 		instance = c.Request.Header.Get(COUPA_INSTANCE_ID_HEADER)
 	}
