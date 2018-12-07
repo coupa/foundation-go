@@ -10,6 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+/*
+ * Health information struct.
+ */
 type HealthInfo struct {
 	Status       string           `json:"status"`
 	Version      string           `json:"version"`
@@ -22,6 +25,9 @@ type HealthInfo struct {
 	Dependencies []DependencyInfo `json:"dependencies"`
 }
 
+/*
+ * Project information struct.
+ */
 type ProjectInfo struct {
 	Repo   string   `json:"repo"`
 	Home   string   `json:"home"`
@@ -30,6 +36,9 @@ type ProjectInfo struct {
 	Stats  []string `json:"stats"`
 }
 
+/*
+ * Dependency information struct.
+ */
 type DependencyInfo struct {
 	Name         string    `json:"name"`
 	Type         string    `json:"type"`
@@ -39,16 +48,23 @@ type DependencyInfo struct {
 	ResponseTime float64   `json:"responseTime"`
 }
 
+/*
+ * State information struct.
+ */
 type StateInfo struct {
 	Status  string `json:"status"`
 	Details string `json:"details"`
 }
 
+// Global variables
 var (
-	serverStartTime   time.Time // Used to calculate server uptime
-	HealthInformation HealthInfo
+	serverStartTime   time.Time  // Used to calculate server uptime
+	HealthInformation HealthInfo // Globally shared HelathInformation instance.
 )
 
+/*
+ * This health check endpoint can be plugged directly as a gin handler.
+ */
 func HealthCheckHandler(gc *gin.Context) {
 	healthInfo := HealthInformation
 	gc.JSON(http.StatusOK, gin.H{"status": "OK", "version": healthInfo.Version, "revision": healthInfo.Revision})
