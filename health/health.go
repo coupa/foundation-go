@@ -4,25 +4,30 @@
 package health
 
 import (
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
+)
 
-	"github.com/gin-gonic/gin"
+const (
+	OK   = "OK"
+	WARN = "WARN"
+	CRIT = "CRIT"
 )
 
 /*
  * Health information struct.
  */
 type HealthInfo struct {
-	Status       string           `json:"status"`
-	Version      string           `json:"version"`
-	Revision     string           `json:"revision"`
-	Uptime       int              `json:"uptime"`
-	Name         string           `json:"name"`
-	Description  string           `json:"description"`
-	Host         string           `json:"host"`
-	Project      ProjectInfo      `json:"project"`
-	Dependencies []DependencyInfo `json:"dependencies"`
+	Status         string      `json:"status"`
+	Version        string      `json:"version"`
+	Revision       string      `json:"revision"`
+	Uptime         int         `json:"uptime"`
+	Name           string      `json:"name"`
+	Description    string      `json:"description"`
+	Host           string      `json:"host"`
+	Project        ProjectInfo `json:"project"`
+	DBDependencies []DBDependency
 }
 
 /*
@@ -62,18 +67,15 @@ var (
 	HealthInformation HealthInfo // Globally shared HelathInformation instance.
 )
 
-const (
-	OK   = "OK"
-	WARN = "WARN"
-	CRIT = "CRIT"
-)
-
 /*
  * This health check endpoint can be plugged directly as a gin handler.
  */
 func HealthCheckHandler(gc *gin.Context) {
 	healthInfo := HealthInformation
-	gc.JSON(http.StatusOK, gin.H{"status": "OK", "version": healthInfo.Version, "revision": healthInfo.Revision})
+	for i := range healthInfo.DBDependencies {
+		dbStatusCheck(&healthInfo.DBDependencies[i])
+	}
+	gc.JSON(http.StatusOK, healthInfo)
 }
 
 func checkHttpServiceStatus(url string) StateInfo {
