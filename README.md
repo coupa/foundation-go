@@ -106,8 +106,10 @@ There are two types of health check supported by this library.
 
 To use this health check perform following,
 ```
+import "github.com/coupa/foundation-go/health"
+
 r = gin.New()
-r.GET("/health", HealthCheckHandler)
+r.GET("/health", health.HealthCheckHandler)
 ```
 
 2. Health check of dependent services.
