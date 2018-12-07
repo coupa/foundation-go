@@ -101,3 +101,19 @@ func StatsTimeWithTags(callback func(), key string, tags Tags) {
 		callback()
 	}()
 }
+
+//Perfer way to using timing:
+// defer StatsTiming(NewTimingWithTags(tags), key)
+func NewTimingWithTags(tags Tags) (t *statsd.Timing) {
+	if client := GetStatsD(tags); client != nil {
+		timing := client.NewTiming()
+		t = &timing
+	}
+	return t
+}
+
+func StatsTiming(t *statsd.Timing, key string) {
+	if  t != nil {
+		t.Send(key)
+	}
+}
