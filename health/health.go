@@ -62,10 +62,27 @@ var (
 	HealthInformation HealthInfo // Globally shared HelathInformation instance.
 )
 
+const (
+	OK   = "OK"
+	WARN = "WARN"
+	CRIT = "CRIT"
+)
+
 /*
  * This health check endpoint can be plugged directly as a gin handler.
  */
 func HealthCheckHandler(gc *gin.Context) {
 	healthInfo := HealthInformation
 	gc.JSON(http.StatusOK, gin.H{"status": "OK", "version": healthInfo.Version, "revision": healthInfo.Revision})
+}
+
+func checkHttpServiceStatus(url string) StateInfo {
+	var stateInfo StateInfo
+	resp, err := http.Get(url)
+	if err == nil && resp.StatusCode == http.StatusOK {
+		stateInfo.Status = OK
+	} else {
+		stateInfo.Status = CRIT
+	}
+	return stateInfo
 }
