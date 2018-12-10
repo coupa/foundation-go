@@ -49,8 +49,6 @@ var _ = Describe("health", func() {
 
 		Context("get DB health check", func() {
 			It("gives DB Status", func() {
-				HealthInformation.Revision = "x.xx"
-				HealthInformation.Version = "y.yy"
 				dbBasic := DependencyInfo{
 					Name: "mysql",
 				}

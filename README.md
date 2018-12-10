@@ -109,9 +109,30 @@ To use this health check perform following,
 import "github.com/coupa/foundation-go/health"
 
 r = gin.New()
-r.GET("/health", health.HealthCheckHandler)
+handler := health.NewHealthCheckHandler("y.yy", "x.xx")
+r.GET("/health", handler.HealthCheckHandler)
+
 ```
 
 2. Health check of dependent services.
+
+```
+import "github.com/coupa/foundation-go/health"
+
+dbBasic := health.DependencyInfo{
+					Name: "mysql",
+		    }
+dependencies := []health.DBDependency{{
+    BasicInfo: dbBasic,
+    Dialect:   "mysql",
+    DSN:       "root@tcp(127.0.0.1:3306)/test-database?parseTime=true",
+}}
+
+var serviceDependencies []health.ServiceDependencyInfo
+serviceDependencies = append(serviceDependencies, health.NewServiceDependency("testService1", "testVersion1", "testRevision1", "http://testhost/health"))
+detailedHealthCheckHandler := health.NewDetailedHealthCheckHandler(dependencies, serviceDependencies)
+r = gin.New()
+r.GET("/detailed-health", detailedHealthCheckHandler.DetailedHealthCheckHandler)
+```
 
 
