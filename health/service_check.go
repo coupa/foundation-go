@@ -28,6 +28,13 @@ func NewHTTPEndPointHealthCheckService(dependentServices []ServiceDependencyInfo
 	return HTTPEndPointHealthCheckService{dependentServices}
 }
 
+/*
+ * Returns false is service does not have any dependent services
+ */
+func (service HTTPEndPointHealthCheckService) HasDependencies() bool {
+	return service.dependentServices != nil && len(service.dependentServices) > 0
+}
+
 func (service HTTPEndPointHealthCheckService) CheckHttpServiceStatus() []DependencyInfo {
 	var dependencies []DependencyInfo
 	for i := range service.dependentServices {

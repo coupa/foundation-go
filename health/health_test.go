@@ -62,7 +62,7 @@ var _ = Describe("health", func() {
 				}))
 				var serviceDependencies []ServiceDependencyInfo
 				serviceDependencies = append(serviceDependencies, NewServiceDependency("testService1", "testVersion1", "testRevision1", "http://testhost/health"))
-				detailedHealthCheckHandler := NewDetailedHealthCheckHandler(dependencies, serviceDependencies)
+				detailedHealthCheckHandler, _ := NewDetailedHealthCheckHandler(dependencies, serviceDependencies)
 				r.GET("/detailed-health", detailedHealthCheckHandler.DetailedHealthCheckHandler)
 				defer ts.Close()
 				request, _ := http.NewRequest("GET", "/detailed-health", nil)

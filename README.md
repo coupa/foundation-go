@@ -109,7 +109,10 @@ To use this health check perform following,
 import "github.com/coupa/foundation-go/health"
 
 r = gin.New()
+// Create simple handler which takes two parameters
+// First param is service version and second is revision
 handler := health.NewHealthCheckHandler("y.yy", "x.xx")
+// Map the handler to an API endpoint
 r.GET("/health", handler.HealthCheckHandler)
 
 ```
@@ -119,8 +122,9 @@ r.GET("/health", handler.HealthCheckHandler)
 ```
 import "github.com/coupa/foundation-go/health"
 
+// Create database dependency array
 dbBasic := health.DependencyInfo{
-					Name: "mysql",
+			    Name: "mysql",
 		    }
 dependencies := []health.DBDependency{{
     BasicInfo: dbBasic,
@@ -128,10 +132,15 @@ dependencies := []health.DBDependency{{
     DSN:       "root@tcp(127.0.0.1:3306)/test-database?parseTime=true",
 }}
 
+// Create service dependency array
 var serviceDependencies []health.ServiceDependencyInfo
 serviceDependencies = append(serviceDependencies, health.NewServiceDependency("testService1", "testVersion1", "testRevision1", "http://testhost/health"))
+
+// Create detailed health check handler which accepts two parameters
+// First parameter is db dependencies and second param is service dependencies
 detailedHealthCheckHandler := health.NewDetailedHealthCheckHandler(dependencies, serviceDependencies)
 r = gin.New()
+// Map the handler to an API endpoint
 r.GET("/detailed-health", detailedHealthCheckHandler.DetailedHealthCheckHandler)
 ```
 

@@ -90,10 +90,14 @@ func NewHealthCheckHandler(version string, revision string) HealthCheckHandler {
 /*
  * Factory method for detailed health check handler
  */
-func NewDetailedHealthCheckHandler(dBDependencies []DBDependency, serviceDependencies []ServiceDependencyInfo) DetailedHealthCheckHandler {
+func NewDetailedHealthCheckHandler(dBDependencies []DBDependency, serviceDependencies []ServiceDependencyInfo) (handler DetailedHealthCheckHandler, error string) {
+	var h DetailedHealthCheckHandler
 	httpEnpointHealthCheckService := NewHTTPEndPointHealthCheckService(serviceDependencies)
-	h := DetailedHealthCheckHandler{dBDependencies, httpEnpointHealthCheckService}
-	return h
+	if dBDependencies == nil && !httpEnpointHealthCheckService.HasDependencies() {
+		return h, "One of the dependency is mandatory is for detailed health check handler"
+	}
+	h = DetailedHealthCheckHandler{dBDependencies, httpEnpointHealthCheckService}
+	return h, ""
 }
 
 /*
@@ -108,11 +112,15 @@ func (handler HealthCheckHandler) HealthCheckHandler(gc *gin.Context) {
  */
 func (handler DetailedHealthCheckHandler) DetailedHealthCheckHandler(gc *gin.Context) {
 	var healthInfo HealthInfo
-	for i := range handler.dBDependencies {
-		dbStatusCheck(&handler.dBDependencies[i])
+	if handler.dBDependencies != nil {
+		for i := range handler.dBDependencies {
+			dbStatusCheck(&handler.dBDependencies[i])
+		}
+		healthInfo.DBDependencies = handler.dBDependencies
 	}
-	healthInfo.DBDependencies = handler.dBDependencies
-	dependencyInfo := handler.httpEnpointHealthCheckService.CheckHttpServiceStatus()
-	healthInfo.ServiceDependencies = dependencyInfo
+	if handler.httpEnpointHealthCheckService.HasDependencies() {
+		dependencyInfo := handler.httpEnpointHealthCheckService.CheckHttpServiceStatus()
+		healthInfo.ServiceDependencies = dependencyInfo
+	}
 	gc.JSON(http.StatusOK, healthInfo)
 }
