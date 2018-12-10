@@ -27,12 +27,12 @@ var _ = Describe("health", func() {
 
 		Context("get health check", func() {
 			It("can get a health check", func() {
-				HealthInformation.Revision = "x.xx"
-				HealthInformation.Version = "y.yy"
 				ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(200)
 				}))
-				r.GET("/health", HealthCheckHandler)
+				handler := NewHealthCheckHandler("y.yy", "x.xx")
+
+				r.GET("/health", handler.HealthCheckHandler)
 				defer ts.Close()
 				request, _ := http.NewRequest("GET", "/health", nil)
 				response := httptest.NewRecorder()
@@ -54,17 +54,20 @@ var _ = Describe("health", func() {
 				dbBasic := DependencyInfo{
 					Name: "mysql",
 				}
-				HealthInformation.DBDependencies = []DBDependency{{
+				dependencies := []DBDependency{{
 					BasicInfo: dbBasic,
 					Dialect:   "mysql",
-					DSN:       "root@tcp(127.0.0.1:3306)/iris?parseTime=true",
+					DSN:       "root@tcp(127.0.0.1:3306)/test-database?parseTime=true",
 				}}
 				ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(200)
 				}))
-				r.GET("/health", HealthCheckHandler)
+				var serviceDependencies []ServiceDependencyInfo
+				serviceDependencies = append(serviceDependencies, NewServiceDependency("testService1", "testVersion1", "testRevision1", "http://testhost/health"))
+				detailedHealthCheckHandler := NewDetailedHealthCheckHandler(dependencies, serviceDependencies)
+				r.GET("/detailed-health", detailedHealthCheckHandler.DetailedHealthCheckHandler)
 				defer ts.Close()
-				request, _ := http.NewRequest("GET", "/health", nil)
+				request, _ := http.NewRequest("GET", "/detailed-health", nil)
 				response := httptest.NewRecorder()
 				r.ServeHTTP(response, request)
 				fmt.Println("response code", response)
@@ -72,10 +75,15 @@ var _ = Describe("health", func() {
 				var result HealthInfo
 				json.NewDecoder(response.Body).Decode(&result)
 				Expect(response.Body).ShouldNot(BeNil())
-				Expect(result.DBDependencies[0].BasicInfo.State.Status).To(Equal("OK"))
+				Expect(result.DBDependencies[0].BasicInfo.State.Status).To(Equal("CRIT"))
+				Expect(result.ServiceDependencies[0].State.Status).To(Equal("CRIT"))
+				Expect(result.ServiceDependencies[0].Name).To(Equal("testService1"))
+				Expect(result.ServiceDependencies[0].Version).To(Equal("testVersion1"))
+				Expect(result.ServiceDependencies[0].Revision).To(Equal("testRevision1"))
 			})
 		})
 	})
+
 })
 
 func TestConfig(t *testing.T) {
