@@ -100,3 +100,48 @@ The key should of format: <metric-name>.* and should not contain project, applic
 * STATSD_INSTANCE_NAME: Determines the statsD prefix for the metrics. Default to 'unknown_instance_name'
 * STATSD_URL: The statsD url and port. Useful for e.g. for local dev testing. Defaults to '172.17.0.1:8125'
 
+### Health check
+There are two types of health check supported by this library.
+1. Health check of host service.
+
+To use this health check perform following,
+```
+import "github.com/coupa/foundation-go/health"
+
+r = gin.New()
+// Create simple handler which takes two parameters
+// First param is service version and second is revision
+handler := health.NewHealthCheckHandler("y.yy", "x.xx")
+// Map the handler to an API endpoint
+r.GET("/health", handler.HealthCheckHandler)
+
+```
+
+2. Health check of dependent services.
+
+```
+import "github.com/coupa/foundation-go/health"
+
+// Create database dependency array
+dbBasic := health.DependencyInfo{
+			    Name: "mysql",
+		    }
+dependencies := []health.DBDependency{{
+    BasicInfo: dbBasic,
+    Dialect:   "mysql",
+    DSN:       "root@tcp(127.0.0.1:3306)/test-database?parseTime=true",
+}}
+
+// Create service dependency array
+var serviceDependencies []health.ServiceDependencyInfo
+serviceDependencies = append(serviceDependencies, health.NewServiceDependency("testService1", "testVersion1", "testRevision1", "http://testhost/health"))
+
+// Create detailed health check handler which accepts two parameters
+// First parameter is db dependencies and second param is service dependencies
+detailedHealthCheckHandler := health.NewDetailedHealthCheckHandler(dependencies, serviceDependencies)
+r = gin.New()
+// Map the handler to an API endpoint
+r.GET("/detailed-health", detailedHealthCheckHandler.DetailedHealthCheckHandler)
+```
+
+
