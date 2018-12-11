@@ -20,16 +20,16 @@ const (
  * Health information struct.
  */
 type HealthInfo struct {
-	Status              string      `json:"status"`
-	Version             string      `json:"version"`
-	Revision            string      `json:"revision"`
-	Uptime              int         `json:"uptime"`
-	Name                string      `json:"name"`
-	Description         string      `json:"description"`
-	Host                string      `json:"host"`
-	Project             ProjectInfo `json:"project"`
-	DBDependencies      []DBDependency
-	ServiceDependencies []DependencyInfo
+	Status              string           `json:"status"`
+	Version             string           `json:"version"`
+	Revision            string           `json:"revision"`
+	Uptime              int              `json:"uptime"`
+	Name                string           `json:"name"`
+	Description         string           `json:"description"`
+	Host                string           `json:"host"`
+	Project             ProjectInfo      `json:"project"`
+	DBDependencies      []DependencyInfo `json:"db-dependencies"`
+	ServiceDependencies []DependencyInfo `json:"service-dependencies"`
 }
 
 /*
@@ -115,8 +115,12 @@ func (handler DetailedHealthCheckHandler) DetailedHealthCheckHandler(gc *gin.Con
 	if handler.dBDependencies != nil {
 		for i := range handler.dBDependencies {
 			dbStatusCheck(&handler.dBDependencies[i])
+			dbDependency := handler.dBDependencies[i]
+			healthInfo.DBDependencies = append(healthInfo.DBDependencies, DependencyInfo{Name: "database", Type: dbDependency.Dialect,
+				Version: dbDependency.BasicInfo.Version, State: dbDependency.BasicInfo.State,
+				ResponseTime: dbDependency.BasicInfo.ResponseTime, Revision: dbDependency.BasicInfo.Revision})
 		}
-		healthInfo.DBDependencies = handler.dBDependencies
+
 	}
 	if handler.httpEnpointHealthCheckService.HasDependencies() {
 		dependencyInfo := handler.httpEnpointHealthCheckService.CheckHttpServiceStatus()

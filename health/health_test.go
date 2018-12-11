@@ -73,7 +73,7 @@ var _ = Describe("health", func() {
 				var result HealthInfo
 				json.NewDecoder(response.Body).Decode(&result)
 				Expect(response.Body).ShouldNot(BeNil())
-				Expect(result.DBDependencies[0].BasicInfo.State.Status).To(Equal("CRIT"))
+				Expect(result.DBDependencies[0].State.Status).To(Equal("CRIT"))
 				Expect(result.ServiceDependencies[0].State.Status).To(Equal("CRIT"))
 				Expect(result.ServiceDependencies[0].Name).To(Equal("testService1"))
 				Expect(result.ServiceDependencies[0].Version).To(Equal("testVersion1"))
