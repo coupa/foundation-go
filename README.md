@@ -91,7 +91,23 @@ StatsIncrement(key string)
 StatsIncrementWithTags(key string, tags Tags)
 StatsTime(callback func(), key string)
 StatsTimeWithTags(callback func(), key string, tags Tags)
+NewTimingWithTags(tags Tags) (t *statsd.Timing)
+StatsTiming(t *statsd.Timing, key string)
+TimingWithTagsValue(key string, tags Tags, value interface{})
+
 ```
+
+Two ways of using timing:
+```
+func rates () {
+	defer metrics.StatsTiming(metrics.NewTimingWithTags(metrics.Tags{}), "rates")
+	...
+}
+
+metrics.TimingWithTagsValue("rates"", metrics.Tags{}, int64(my_value)) // my_value in milliseconds
+
+```
+
 
 The key should of format: <metric-name>.* and should not contain project, application or host info (The same is appended by the library)
 
