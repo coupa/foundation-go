@@ -102,11 +102,22 @@ func StatsTimeWithTags(callback func(), key string, tags Tags) {
 	}()
 }
 
-//Perfer way to using timing:
+
+func StatusTimeValueWithTags(v int64, key string, tags Tags) {
+	statsD := GetStatsD(tags)
+	if statsD == nil {
+		return
+	}
+
+	defer statsD.Close()
+
+}
+
+// Perfer way to using timing:
 // defer StatsTiming(NewTimingWithTags(tags), key)
 func NewTimingWithTags(tags Tags) (t *statsd.Timing) {
-	if client := GetStatsD(tags); client != nil {
-		timing := client.NewTiming()
+	if statsD := GetStatsD(tags); statsD != nil {
+		timing := statsD.NewTiming()
 		t = &timing
 	}
 	return t
@@ -115,5 +126,12 @@ func NewTimingWithTags(tags Tags) (t *statsd.Timing) {
 func StatsTiming(t *statsd.Timing, key string) {
 	if  t != nil {
 		t.Send(key)
+	}
+}
+
+func TimingWithTagsValue(key string, tags Tags, value interface{}) {
+	if statsD := GetStatsD(tags); statsD != nil {
+		defer statsD.Close()
+		statsD.Timing(key, value)
 	}
 }
