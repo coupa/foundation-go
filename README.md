@@ -1,102 +1,128 @@
-# Foundational Golang library for Coupa
+# Foundational Go library
 
-This repository hosts foundational golang code for use in all Golang based Coupa applications.
+This foundational Go library conforms to Coupa's microservice standard and can be used in Go based applications.
 
 ## Getting Started
 
-Any go IDE would work well for development.
-
 ### Prerequisites
-* Go version 1.9.* or higher
-* (Optional) Docker
+* Go version 1.10.* or higher
 
-## Building and testing
+## Structure
+Foundation lets you set up your application to use logging, health checks, and metrics conforming to the microservice standard.
 
-A makefile is added to quickly build code (to ensure no compile errors) and run tests. The following are the commands respectively:
+To set up logging, you need to call `logging.InitStandardLogger` early in your application. To set up statsd metrics, you need to define a factory function `func() *metrics.Statsd` and set it using `metrics.SetFactory` function (please see the details in the example below).
+
+Foundation also provides Gin-backed (https://github.com/gin-gonic/gin) server, several middlewares, and health check mechanisms to support the microservice standard.
+
+An example of usage:
 ```
-make dist
-make test
+import (
+  "github.com/coupa/foundation-go/health"
+  "github.com/coupa/foundation-go/logging"
+  "github.com/coupa/foundation-go/metrics"
+  "github.com/coupa/foundation-go/middleware"
+  "github.com/coupa/foundation-go/server"
+  "github.com/gin-gonic/gin"
+  log "github.com/sirupsen/logrus"
+)
+
+func main() {
+
+  //***************************** Logging ***********************************
+
+  //logging.InitStandardLogger must be called early in your app.
+  logging.InitStandardLogger("v1.0.0")
+
+  //The InitStandardLogger above will make logrus' standard logger to use the standard format
+  //So this log.Info here will have the required fields for the standard.
+  log.Info("Starting the server on :8080")
+
+  //***************************** Metrics ***********************************
+
+  //These enable metrics to know how to initialize the Statsd client
+  factory := func() *metrics.Statsd {
+    return metrics.NewStatsd("address", "prefix.", "version", "app", 1.0)
+  }
+  metrics.SetFactory(factory)
+
+  //****************************** Server ***********************************
+
+	svr := server.Server{
+		Engine:               gin.New(),
+		AppInfo:              &health.AppInfo{...},
+		ProjectInfo:          &health.ProjectInfo{...},
+    AdditionalHealthData: map[string]*health.AdditionalHealthData{},
+	}
+
+  //*** Middlewares ***
+
+  //Register the middlewares first before registering routes
+  svr.UseMiddleware(middleware.Correlation())
+  svr.UseMiddleware(middleware.Metrics())
+  svr.UseMiddleware(middleware.RequestLogger(false))
+
+  //*** Health ***
+
+  //Declare or create the health checks that you want
+  dbCheck := health.SQLCheck{
+  	Name: "mysql",
+  	Type: "internal",
+    DB: ...,  //Some *sql.DB
+  }
+  serviceCheck1 := health.WebCheck{
+  	Name: "some web 1",
+  	Type: "service",
+  	URL:  "https://some.web/health",
+  }
+  serviceCheck2 := health.WebCheck{
+  	Name: "some web 2",
+  	Type: "service",
+  	URL:  "https://some.web2/health",
+  }
+
+  //Register 3 versions of the detailed health. Note that they are different as "/v1" has additional custom data but does not have `serviceCheck2` dependency check.
+  ahd1 := health.AdditionalHealthData{
+    DependencyChecks: []HealthCheck{dbCheck, serviceCheck1},
+    DataProvider:    func(c *gin.Context) map[string]interface{}{
+      return map[string]interface{}{
+        "custom": "data",
+      }
+    },
+  }
+
+  adh2 := health.AdditionalHealthData{
+    DependencyChecks: []HealthCheck{dbCheck, serviceCheck1, serviceCheck2},
+  }
+
+  svr.RegisterDetailedHealth("/v1", "v1 of app detailed health", ahd1)
+  svr.RegisterDetailedHealth("/v2", "v2 of app detailed health", ahd2)
+  svr.RegisterDetailedHealth("/v3", "v3 without custom data or dependency check", nil)
+  svr.RegisterSimpleHealth()
+
+  someHandler := func(c *gin.Context) {
+    //Emitting statsd metric
+    metrics.Increment("interesting.metric")
+
+    logging.RL(c).Info("Logging with correlation ID")
+    c.JSON(200, `{"he":"llo"}`)
+  }
+
+  //Register routes
+  svr.Engine.GET("/test", someHandler)
+
+  svr.Engine.Run(":80") //svr.Engine.Run() without address parameter will run on ":8080"
+}
 ```
-
-## Usage
-
-Importing the library:
-```
-import "github.com/coupa/foundation-go"
-```
-
-Metrics and monitoring usage initialization:
-```
-import "github.com/coupa/foundation-go"
-
-foundation.InitMetricsMonitoring(<project-name>, <app-name>, <app-version>, <component-name>)
-```
-NOTE: Project name, App name and Component Name are required arguments
-
-### Middleware support
-
-Few middleware functions are exposed by the library for use in any of the applications that provide web API support.
-These functions are initially geared towards use by applications using Go gin web framework (https://github.com/gin-gonic/gin).
-Plans are to onboard xMux as well (https://github.com/rs/xmux)
-
-RequestIdMiddleware:- Adds request ID to each incoming request (if absent). This ID acts as a correlation ID for correlating
-info between applications.
-```
-import "github.com/coupa/foundation-go/gin_middleware"
-
-rengine := gin.New()
-rengine.Use(gin_middleware.RequestIdMiddleware)
-```
-
-LoggingMiddleware:- Emits standardized logs to each web API request, along with the latency info, in JSON format.
-```
-import "github.com/coupa/foundation-go/gin_middleware"
-
-rengine := gin.New()
-rengine.Use(gin_middleware.LoggingMiddleware)
-```
-
-MetricsMiddleware:- Emits statsD counters to each web API request, along with the latency time durations.
-```
-import "github.com/coupa/foundation-go/gin_middleware"
-
-rengine := gin.New()
-rengine.Use(gin_middleware.MetricsMiddleware)
-```
-
-### Logging
-
-Assumption is that application is using Sirupsen for logging. JSON format will be enabled by the library. Example log:
-```
-import log "github.com/sirupsen/logrus"
-import "github.com/coupa/foundation-go/logging"
-
-// Below two lines not needed if using foundation.InitMetricsMonitoring...
-logging.InitLogging(<project-name>, <app-name>, <app-version>)
-logging.EnableJsonFormat()
-
-log.WithFields(log.Fields{
-    "field1":  val1,
-    "field2": val2,
-}).Info("Message")
-```
-
-### StatsD Metrics
-
-Following statsD APIs are available to use by the application in it's code:
-```
-import "github.com/coupa/foundation-go/metrics"
-
-StatsIncrement(key string)
-StatsIncrementWithTags(key string, tags Tags)
-StatsTime(callback func(), key string)
-StatsTimeWithTags(callback func(), key string, tags Tags)
-```
-
-The key should of format: <metric-name>.* and should not contain project, application or host info (The same is appended by the library)
 
 ### Env variables
 
-* STATSD_INSTANCE_NAME: Determines the statsD prefix for the metrics. Default to 'unknown_instance_name'
-* STATSD_URL: The statsD url and port. Useful for e.g. for local dev testing. Defaults to '172.17.0.1:8125'
+`health.AppInfo{}.FillFromENV` and `health.ProjectInfo{}.FillFromENV` will by default load from these Env variables:
 
+* APPLICATION_NAME
+* HOSTNAME
+* SERVER_BIND_ADDRESS
+* PROJECT_REPO
+* PROJECT_HOME
+* PROJECT_OWNERS: Comma-separated owner names.
+* PROJECT_LOG_URLS: Comma-separated log URLs.
+* PROJECT_STATS_URLS: Comma-separated metrics URLs.
