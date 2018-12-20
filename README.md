@@ -34,7 +34,7 @@ func main() {
   logging.InitStandardLogger("v1.0.0")
 
   //The InitStandardLogger above will make logrus' standard logger to use the standard format
-  //So this log.Info here will have the required fields for the standard.
+  //So this log.Info call will have the required standard fields.
   log.Info("Starting the server on :8080")
 
   //***************************** Metrics ***********************************
@@ -47,12 +47,12 @@ func main() {
 
   //****************************** Server ***********************************
 
-	svr := server.Server{
-		Engine:               gin.New(),
-		AppInfo:              &health.AppInfo{...},
-		ProjectInfo:          &health.ProjectInfo{...},
+  svr := server.Server{
+    Engine:               gin.New(),
+    AppInfo:              &health.AppInfo{...},
+    ProjectInfo:          &health.ProjectInfo{...},
     AdditionalHealthData: map[string]*health.AdditionalHealthData{},
-	}
+  }
 
   //*** Middlewares ***
 
@@ -65,8 +65,8 @@ func main() {
 
   //Declare or create the health checks that you want
   dbCheck := health.SQLCheck{
-  	Name: "mysql",
-  	Type: "internal",
+    Name: "mysql",
+    Type: "internal",
     DB: ...,  //Some *sql.DB
   }
   serviceCheck1 := health.WebCheck{
@@ -80,7 +80,9 @@ func main() {
   	URL:  "https://some.web2/health",
   }
 
-  //Register 3 versions of the detailed health. Note that they are different as "/v1" has additional custom data but does not have `serviceCheck2` dependency check.
+  //Register 3 versions of the detailed health. Note that they are different as
+  //"/v1" has additional custom data but does not have `serviceCheck2` dependency check,
+  //and "/v3" has no dependency or additional data.
   ahd1 := health.AdditionalHealthData{
     DependencyChecks: []HealthCheck{dbCheck, serviceCheck1},
     DataProvider:    func(c *gin.Context) map[string]interface{}{
