@@ -192,6 +192,45 @@ var _ = Describe("Server", func() {
 		})
 
 		Describe("RegisterDetailedHealth", func() {
+			It("panics on unaccepted version group", func() {
+				defer func() {
+					r := recover()
+					Expect(r).NotTo(BeNil())
+					Expect(r.(string)).To(HavePrefix("Invalid version group"))
+				}()
+
+				svr := Server{}
+				svr.RegisterDetailedHealth("bad", "", nil)
+			})
+
+			It("does not panic on accepted version group", func() {
+				svr := Server{
+					Engine: gin.New(),
+				}
+				svr.RegisterDetailedHealth("/", "slash", nil)
+				svr.RegisterDetailedHealth("/v10", "10", nil)
+
+				req, _ := http.NewRequest("GET", "/health/detailed", nil)
+				resp := httptest.NewRecorder()
+				svr.Engine.ServeHTTP(resp, req)
+				Expect(resp.Code).To(Equal(http.StatusOK))
+
+				d, _ := ioutil.ReadAll(resp.Body)
+				var h health.Health
+				json.Unmarshal(d, &h)
+				Expect(h["description"].(string)).To(Equal("slash"))
+
+				req, _ = http.NewRequest("GET", "/v10/health/detailed", nil)
+				resp = httptest.NewRecorder()
+				svr.Engine.ServeHTTP(resp, req)
+				Expect(resp.Code).To(Equal(http.StatusOK))
+
+				d, _ = ioutil.ReadAll(resp.Body)
+				var h2 health.Health
+				json.Unmarshal(d, &h2)
+				Expect(h2["description"].(string)).To(Equal("10"))
+			})
+
 			It("sets the description in the detailed health", func() {
 				svr := Server{
 					Engine:               gin.New(),
@@ -204,6 +243,7 @@ var _ = Describe("Server", func() {
 				svr.RegisterDetailedHealth("/v2", "pizza", &health.AdditionalHealthData{
 					Description: "This should be overwritten",
 				})
+				svr.RegisterDetailedHealth("", "empty", nil)
 
 				req, _ := http.NewRequest("GET", "/v1/health/detailed", nil)
 				resp := httptest.NewRecorder()
@@ -224,6 +264,16 @@ var _ = Describe("Server", func() {
 				var h2 health.Health
 				json.Unmarshal(d, &h2)
 				Expect(h2["description"].(string)).To(Equal("pizza"))
+
+				req, _ = http.NewRequest("GET", "/health/detailed", nil)
+				resp = httptest.NewRecorder()
+				svr.Engine.ServeHTTP(resp, req)
+				Expect(resp.Code).To(Equal(http.StatusOK))
+
+				d, _ = ioutil.ReadAll(resp.Body)
+				var h3 health.Health
+				json.Unmarshal(d, &h3)
+				Expect(h3["description"].(string)).To(Equal("empty"))
 			})
 		})
 	})

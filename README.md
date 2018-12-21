@@ -84,7 +84,7 @@ func main() {
   //"/v1" has additional custom data but does not have `serviceCheck2` dependency check,
   //and "/v3" has no dependency or additional data.
   ahd1 := health.AdditionalHealthData{
-    DependencyChecks: []HealthCheck{dbCheck, serviceCheck1},
+    DependencyChecks: []HealthChecker{dbCheck, serviceCheck1},
     DataProvider:    func(c *gin.Context) map[string]interface{}{
       return map[string]interface{}{
         "custom": "data",
@@ -93,7 +93,7 @@ func main() {
   }
 
   adh2 := health.AdditionalHealthData{
-    DependencyChecks: []HealthCheck{dbCheck, serviceCheck1, serviceCheck2},
+    DependencyChecks: []HealthChecker{dbCheck, serviceCheck1, serviceCheck2},
   }
 
   svr.RegisterDetailedHealth("/v1", "v1 of app detailed health", ahd1)

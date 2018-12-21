@@ -36,13 +36,22 @@ func (s *Server) RegisterSimpleHealth() {
 }
 
 //RegisterDetailedHealth registers detail health at /<versionGroup>/health/detailed
-//versionGroup must be like "/v1", then the endpoint is "/v1/health/detailed"
-//There should be a leading slash for the versionGroup.
-//If versionGroup is empty string "", then this detailed health endpoint is not
+//versionGroup must be like "/v1", "/v2"..., then the endpoint is "/v1/health/detailed",
+//"/v2/health/detailed"... There should be a leading slash for the versionGroup.
+//If versionGroup is empty string "" or "/", then this detailed health endpoint is not
 //versioned, like "/health/detailed"
 //A detailed health should only check for other service's simple health. Never
 //check the detailed health of a depending service.
 func (s *Server) RegisterDetailedHealth(versionGroup, description string, h *health.AdditionalHealthData) {
+	//Accept only valid versionGroup, like "", "/", and "/v1"...
+	//This also makes versionGroup compatible for registering the route
+	if versionGroup != "" {
+		if versionGroup == "/" {
+			versionGroup = ""
+		} else if fine, _ := regexp.MatchString(`^/v\d+$`, versionGroup); !fine {
+			panic(`Invalid version group. Must be "", "/", or like "/v1" "/v2"...`)
+		}
+	}
 	if h == nil {
 		h = new(health.AdditionalHealthData)
 	}
@@ -50,7 +59,12 @@ func (s *Server) RegisterDetailedHealth(versionGroup, description string, h *hea
 	if s.AdditionalHealthData == nil {
 		s.AdditionalHealthData = map[string]*health.AdditionalHealthData{}
 	}
-	s.AdditionalHealthData[versionGroup] = h
+	if versionGroup == "" {
+		s.AdditionalHealthData["/"] = h
+	} else {
+		s.AdditionalHealthData[versionGroup] = h
+	}
+
 	s.Engine.GET(versionGroup+"/health/detailed", s.detailedHealth)
 }
 
@@ -61,7 +75,7 @@ func (s *Server) simpleHealth(c *gin.Context) {
 func (s *Server) detailedHealth(c *gin.Context) {
 	ver := extractVersionKey(c.Request.URL.Path)
 	ahd := new(health.AdditionalHealthData)
-	if s.AdditionalHealthData != nil {
+	if s.AdditionalHealthData != nil && s.AdditionalHealthData[ver] != nil {
 		ahd = s.AdditionalHealthData[ver]
 	}
 	h := health.NewDetailedHealth(s.AppInfo, s.ProjectInfo, ahd.Description)
