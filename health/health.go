@@ -88,12 +88,12 @@ func UpTime() int64 {
 */
 type Health map[string]interface{}
 
-func (h Health) AddDependency(d DependencyInfo) {
+func (h Health) AddDependency(d *DependencyInfo) {
 	if h["dependencies"] == nil {
-		h["dependencies"] = []interface{}{d}
+		h["dependencies"] = []interface{}{*d}
 		return
 	}
-	h["dependencies"] = append(h["dependencies"].([]interface{}), d)
+	h["dependencies"] = append(h["dependencies"].([]interface{}), *d)
 }
 
 func (h Health) SetDependencies(d []DependencyInfo) {

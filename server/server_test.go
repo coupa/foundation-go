@@ -113,12 +113,33 @@ var _ = Describe("Server", func() {
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			Expect(resp.Header().Get("X-Correlation-Id")).NotTo(BeEmpty())
 			d, _ := ioutil.ReadAll(resp.Body)
-			h := health.Health{}
+
+			var h health.Health
 			json.Unmarshal(d, &h)
 			Expect(len(h["dependencies"].([]interface{}))).To(Equal(2))
+
+			processed := map[string]bool{}
+
+			for _, dependency := range h["dependencies"].([]interface{}) {
+				dep := dependency.(map[string]interface{})
+				if dep["name"] == "mysql" {
+					processed["mysql"] = true
+					Expect(dep["type"]).To(Equal("internal"))
+					Expect(dep["state"].(map[string]interface{})["status"]).To(Equal(health.CRIT))
+				} else {
+					Expect(dep["name"]).To(Equal("some web"))
+					processed["some web"] = true
+					Expect(dep["type"]).To(Equal("service"))
+					Expect(dep["state"].(map[string]interface{})["status"]).To(Equal(health.WARN))
+				}
+			}
+			Expect(processed).To(HaveLen(2))
 		})
 
 		Describe("Timeout", func() {
+			AfterEach(func() {
+				HealthTimeout = 5 * time.Second
+			})
 			It("times out after HealthTimeout time if some checks have not finished", func() {
 				svr := Server{
 					Engine:               gin.New(),
@@ -132,34 +153,41 @@ var _ = Describe("Server", func() {
 					Type: "internal",
 				}
 
-				serviceCheck1 := ServiceCheck{}
+				serviceCheck1 := SlowCheck{Name: "slow1"}
+				serviceCheck2 := SlowCheck{Name: "slow2"}
 				custom := health.AdditionalHealthData{
-					DependencyChecks: []health.HealthChecker{dbCheck, serviceCheck1},
+					DependencyChecks: []health.HealthChecker{serviceCheck1, serviceCheck2, dbCheck},
 				}
 
 				HealthTimeout = 0 * time.Second
-				svr.RegisterSimpleHealth()
 				svr.RegisterDetailedHealth("/v1", "This is v1 detailed health", &custom)
 
-				svr.Engine.GET("/test", handler)
-
-				req, _ := http.NewRequest("GET", "/test", nil)
+				req, _ := http.NewRequest("GET", "/v1/health/detailed", nil)
 				resp := httptest.NewRecorder()
-				svr.Engine.ServeHTTP(resp, req)
-				Expect(resp.Code).To(Equal(http.StatusNoContent))
-
-				req, _ = http.NewRequest("GET", "/health", nil)
-				resp = httptest.NewRecorder()
-				svr.Engine.ServeHTTP(resp, req)
-				Expect(resp.Code).To(Equal(http.StatusOK))
-
-				req, _ = http.NewRequest("GET", "/v1/health/detailed", nil)
-				resp = httptest.NewRecorder()
 				svr.Engine.ServeHTTP(resp, req)
 
 				Expect(resp.Code).To(Equal(http.StatusOK))
 				d, _ := ioutil.ReadAll(resp.Body)
-				fmt.Println(string(d))
+
+				var h health.Health
+				json.Unmarshal(d, &h)
+				Expect(len(h["dependencies"].([]interface{}))).To(Equal(3))
+
+				processed := map[string]bool{}
+
+				for _, dependency := range h["dependencies"].([]interface{}) {
+					dep := dependency.(map[string]interface{})
+					if dep["name"] == "mysql" {
+						processed["mysql"] = true
+						Expect(dep["type"]).To(Equal("internal"))
+					} else if dep["name"] == "slow1" || dep["name"] == "slow2" {
+						processed[dep["name"].(string)] = true
+						Expect(dep["type"]).To(Equal("service"))
+						Expect(dep["state"].(map[string]interface{})["details"]).To(HavePrefix("Health check timed out after"))
+					}
+					Expect(dep["state"].(map[string]interface{})["status"]).To(Equal(health.CRIT))
+				}
+				Expect(processed).To(HaveLen(3))
 			})
 		})
 
@@ -219,18 +247,19 @@ var _ = Describe("Server", func() {
 	})
 })
 
-type ServiceCheck struct {
+type SlowCheck struct {
+	Name string
 }
 
-func (sc ServiceCheck) Check() *health.DependencyInfo {
-	time.Sleep(1 * time.Second)
+func (sc SlowCheck) Check() *health.DependencyInfo {
+	time.Sleep(10 * time.Second)
 	return &health.DependencyInfo{}
 }
 
-func (sc ServiceCheck) GetName() string {
-	return "fake"
+func (sc SlowCheck) GetName() string {
+	return sc.Name
 }
 
-func (sc ServiceCheck) GetType() string {
+func (sc SlowCheck) GetType() string {
 	return "service"
 }

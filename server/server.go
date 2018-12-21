@@ -76,29 +76,45 @@ func (s *Server) detailedHealth(c *gin.Context) {
 
 	checks := ahd.DependencyChecks
 	if num := len(checks); num > 0 {
-		buffer := make(chan *health.DependencyInfo, num)
-		hChecks := make(chan health.HealthChecker, num)
+		type wrapper struct {
+			di *health.DependencyInfo
+			hc health.HealthChecker
+		}
+		buffer := make(chan *wrapper, num)
+		hChecks := make([]health.HealthChecker, num)
 
+		for i, hc := range checks {
+			hChecks[i] = hc
+		}
+		println(len(hChecks))
 		for _, hc := range checks {
-			hChecks <- hc
 			go func(healthCheck health.HealthChecker) {
-				buffer <- healthCheck.Check()
+				buffer <- &wrapper{di: healthCheck.Check(), hc: healthCheck}
 			}(hc)
 		}
 
+	Label:
 		for i := 0; i < num; i++ {
 			select {
-			case info := <-buffer:
-				<-hChecks
-				h.AddDependency(*info)
+			case w := <-buffer:
+				for i, hc := range hChecks {
+					if hc == w.hc {
+						hChecks[i] = nil
+						break
+					}
+				}
+				h.AddDependency(w.di)
 			case <-time.After(HealthTimeout):
+				break Label
 			}
 		}
-		close(hChecks)
 
 		//If there is any item in hChecks, it is timed out
-		for hc := range hChecks {
-			h.AddDependency(health.DependencyInfo{
+		for _, hc := range hChecks {
+			if hc == nil {
+				continue
+			}
+			h.AddDependency(&health.DependencyInfo{
 				Name:         hc.GetName(),
 				Type:         hc.GetType(),
 				ResponseTime: HealthTimeout.Seconds(),
