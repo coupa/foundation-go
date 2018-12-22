@@ -54,8 +54,8 @@
   version = ">=2.2.0"
 
 [[override]]
-name = "gopkg.in/fsnotify.v1"
-source = "gopkg.in/fsnotify/fsnotify.v1"
+  name = "gopkg.in/fsnotify.v1"
+  source = "gopkg.in/fsnotify/fsnotify.v1"
 
 [prune]
   go-tests = true

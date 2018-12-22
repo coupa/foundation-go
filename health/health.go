@@ -89,6 +89,9 @@ func UpTime() int64 {
 type Health map[string]interface{}
 
 func (h Health) AddDependency(d *DependencyInfo) {
+	if d == nil {
+		return
+	}
 	if h["dependencies"] == nil {
 		h["dependencies"] = []interface{}{*d}
 		return
@@ -102,6 +105,9 @@ func (h Health) SetDependencies(d []DependencyInfo) {
 
 //NewSimpleHealth creates a health struct that can be rendered for the simple health check.
 func NewSimpleHealth(ai *AppInfo, status string) Health {
+	if ai == nil {
+		ai = &AppInfo{}
+	}
 	return Health{
 		"status":   status,
 		"version":  ai.Version,
@@ -111,8 +117,14 @@ func NewSimpleHealth(ai *AppInfo, status string) Health {
 
 //NewDetailedHealth creates a health struct without any dependency.
 func NewDetailedHealth(ai *AppInfo, pi *ProjectInfo, description string) Health {
+	if ai == nil {
+		ai = &AppInfo{}
+	}
+	if pi == nil {
+		pi = &ProjectInfo{}
+	}
 	health := NewSimpleHealth(ai, OK)
-	health["project"] = pi
+	health["project"] = *pi
 	health["host"] = ai.Hostname
 	health["description"] = description
 	health["name"] = ai.AppName
