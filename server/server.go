@@ -100,7 +100,6 @@ func (s *Server) detailedHealth(c *gin.Context) {
 		for i, hc := range checks {
 			hChecks[i] = hc
 		}
-		println(len(hChecks))
 		for _, hc := range checks {
 			go func(healthCheck health.HealthChecker) {
 				buffer <- &wrapper{di: healthCheck.Check(), hc: healthCheck}
