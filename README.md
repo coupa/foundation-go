@@ -34,8 +34,7 @@ func main() {
   logging.InitStandardLogger("v1.0.0")
 
   //The InitStandardLogger above will make logrus' standard logger to use the standard format
-  //So this log.Info call will have the required standard fields.
-  log.Info("Starting the server on :8080")
+  log.Info("this log will have the required standard fields")
 
   //***************************** Metrics ***********************************
 
@@ -49,8 +48,8 @@ func main() {
 
   svr := server.Server{
     Engine:               gin.New(),
-    AppInfo:              &health.AppInfo{...},
-    ProjectInfo:          &health.ProjectInfo{...},
+    AppInfo:              &health.AppInfo{...},     //You should fill in this info
+    ProjectInfo:          &health.ProjectInfo{...}, //You should fill in this info
     AdditionalHealthData: map[string]*health.AdditionalHealthData{},
   }
 
@@ -80,9 +79,6 @@ func main() {
   	URL:  "https://some.web2/health",
   }
 
-  //Register 3 versions of the detailed health. Note that they are different as
-  //"/v1" has additional custom data but does not have `serviceCheck2` dependency check,
-  //and "/v3" has no dependency or additional data.
   ahd1 := health.AdditionalHealthData{
     DependencyChecks: []HealthChecker{dbCheck, serviceCheck1},
     DataProvider:    func(c *gin.Context) map[string]interface{}{
@@ -96,6 +92,9 @@ func main() {
     DependencyChecks: []HealthChecker{dbCheck, serviceCheck1, serviceCheck2},
   }
 
+  //Register 3 versions of the detailed health. Note that they are different as
+  //"/v1" has additional custom data but does not have `serviceCheck2` dependency check,
+  //and "/v3" has no dependency or additional data.
   svr.RegisterDetailedHealth("/v1", "v1 of app detailed health", ahd1)
   svr.RegisterDetailedHealth("/v2", "v2 of app detailed health", ahd2)
   svr.RegisterDetailedHealth("/v3", "v3 without custom data or dependency check", nil)
@@ -105,7 +104,8 @@ func main() {
     //Emitting statsd metric
     metrics.Increment("interesting.metric")
 
-    logging.RL(c).Info("Logging with correlation ID")
+    logging.RL(c).Info("This is logging with correlation ID")
+
     c.JSON(200, `{"he":"llo"}`)
   }
 
