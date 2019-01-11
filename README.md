@@ -17,6 +17,7 @@ Foundation also provides Gin-backed (https://github.com/gin-gonic/gin) server, s
 An example of usage:
 ```
 import (
+  "github.com/coupa/foundation-go/config"
   "github.com/coupa/foundation-go/health"
   "github.com/coupa/foundation-go/logging"
   "github.com/coupa/foundation-go/metrics"
@@ -35,6 +36,23 @@ func main() {
 
   //The InitStandardLogger above will make logrus' standard logger to use the standard format
   log.Info("this log will have the required standard fields")
+
+  //************************* Secrets Manager *******************************
+
+  //To use the GetSecrets or WriteSecretsToENV functions in config/aws_secrets_manager.go,
+  //you need to have AWS credentials configured as environment variables or configure
+  //AWS EC2 IAM roles to allow access (see https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html).
+  //If you have other ways of authentication, you can provide your own session with
+  //GetSecretsWithSession or WriteSecretsToENVWithSession.
+
+  //This will grab values from secrets whose key names are in the format of an
+  //environment variable name (all uppercase characters with digits and connected
+  //with underscores. No dash or other symbols) and set them to corresponding
+  //environment variables.
+  err := config.WriteSecretsToENV("dev/application/for_testing")
+
+  //So if "dev/application/for_testing" has {"GOOD_ENV1":"good","bad-env2":"bad"},
+  //the above method will set only GOOD_ENV1="good" and not the other one
 
   //***************************** Metrics ***********************************
 
@@ -128,3 +146,18 @@ func main() {
 * PROJECT_OWNERS: Comma-separated owner names.
 * PROJECT_LOG_URLS: Comma-separated log URLs.
 * PROJECT_STATS_URLS: Comma-separated metrics URLs.
+
+### Enabling Secrets Manager Tests
+
+This is for foundation-go contributors to run secrets manager tests in foundation-go.
+
+Foundation-go has tests that actually connect to AWS secrets manager. These tests are not run in regular `go test ./...` command.
+
+To run these tests, you need to pre-setup the AWS credentials (mostly likely in environment variables or config files, see https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html), make sure the target secret of name `dev/application/for_testing` exists and have:
+```
+{
+  "TEST_DESCRIPTION": "For testing",
+  "not_set_to_env":"Will not be set to your ENV variables"
+}
+```
+as data. Then run test with this environment variable and command: `TEST_SECRETS_MANAGER=true go test ./...`.
