@@ -1,4 +1,4 @@
-package health_test
+package health
 
 import (
 	. "github.com/onsi/ginkgo"

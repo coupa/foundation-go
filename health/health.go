@@ -15,6 +15,10 @@ const (
 	OK   = "OK"
 	WARN = "WARN"
 	CRIT = "CRIT"
+
+	TypeInternal   = "internal"
+	TypeService    = "service"
+	TypeThirdParty = "third-party"
 )
 
 type AppInfo struct {
