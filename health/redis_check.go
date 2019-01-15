@@ -2,7 +2,7 @@ package health
 
 import (
 	"errors"
-	"gopkg.in/redis.v3"
+	"github.com/go-redis/redis"
 	"regexp"
 	"strings"
 	"time"

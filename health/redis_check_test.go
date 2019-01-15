@@ -1,14 +1,32 @@
 package health
 
 import (
+	"os"
 	"regexp"
 
+	"github.com/go-redis/redis"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Redis Health Checker", func() {
 	Describe("Check", func() {
+		if os.Getenv("TEST_REDIS") == "true" {
+			It("gets Redis version with a valid client and connection", func() {
+				r := redis.NewClient(&redis.Options{
+					Addr:     ":6379",
+					Password: "",
+					DB:       0,
+				})
+				c := RedisCheck{Name: "testRedis", Client: r}
+				d := c.Check()
+				Expect(d.Name).To(Equal("testRedis"))
+				Expect(d.State.Status).To(Equal(OK))
+				Expect(d.Version).To(MatchRegexp(`\d+\.\d+.\d+`))
+				Expect(d.Revision).To(Equal("00000000"))
+			})
+		}
+
 		It("shows unknown type of Client", func() {
 			c := RedisCheck{Name: "test"}
 			d := c.Check()
