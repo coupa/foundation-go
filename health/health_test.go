@@ -1,7 +1,6 @@
-package health_test
+package health
 
 import (
-	. "github.com/coupa/foundation-go/health"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

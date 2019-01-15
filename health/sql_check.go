@@ -38,7 +38,7 @@ func (sc SQLCheck) Check() *DependencyInfo {
 	}
 	return &DependencyInfo{
 		Name:         sc.Name,
-		Type:         "internal",
+		Type:         sc.Type,
 		Version:      version,
 		Revision:     "",
 		State:        state,
