@@ -161,3 +161,11 @@ To run these tests, you need to pre-setup the AWS credentials (mostly likely in 
 }
 ```
 as data. Then run test with this environment variable and command: `TEST_SECRETS_MANAGER=true go test ./...`.
+
+### Enabling Redis Tests
+
+This is for foundation-go contributors to run redis tests in foundation-go.
+
+Foundation-go has tests that actually connect to a local Redis server. These tests are not run in regular `go test ./...` command.
+
+To run these tests, you need to run a local Redis server *without password* on the port 6379, then run test with this environment variable and command: `TEST_REDIS=true go test ./...`.

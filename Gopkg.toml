@@ -54,8 +54,8 @@
   version = ">=2.0.0"
 
 [[constraint]]
-  name = "gopkg.in/redis.v3"
-  version = ">=3.6.4"
+  name = "github.com/go-redis/redis"
+  version = ">=6.14.0"
 
 [[constraint]]
   name = "gopkg.in/yaml.v2"
