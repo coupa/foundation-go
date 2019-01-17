@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"gopkg.in/yaml.v2"
 	"os"
@@ -15,7 +16,7 @@ import (
 //- ConfigBytes Functions ------------------------------------------------------
 type ConfigBytes []byte
 
-// Reads the specified config file. Note that bedrock.Application will process
+// Reads the specified config file. Note that it will process
 // the config file, using text/template, with the following extra functions:
 //
 //     {{.Env "ENVIRONMENT_VARIABLE"}}
@@ -41,14 +42,18 @@ func ReadConfigFile(file string) (ConfigBytes, error) {
 	return ConfigBytes(configBytes.Bytes()), nil
 }
 
-func (c ConfigBytes) Unmarshal(dst interface{}) error {
+func (c ConfigBytes) UnmarshalYAML(dst interface{}) error {
 	return yaml.Unmarshal(c, dst)
 }
 
-//UnmarshalAt unmarshals a specific key in the config into dst
-func (c ConfigBytes) UnmarshalAt(dst interface{}, key string) error {
+func (c ConfigBytes) UnmarshalJSON(dst interface{}) error {
+	return json.Unmarshal(c, dst)
+}
+
+//UnmarshalYAMLAt unmarshals a specific key in the config into dst
+func (c ConfigBytes) UnmarshalYAMLAt(dst interface{}, key string) error {
 	var full = make(map[interface{}]interface{})
-	if err := c.Unmarshal(&full); err != nil {
+	if err := c.UnmarshalYAML(&full); err != nil {
 		return err
 	}
 	d, err := yaml.Marshal(full[key])
@@ -57,6 +62,20 @@ func (c ConfigBytes) UnmarshalAt(dst interface{}, key string) error {
 	}
 
 	return yaml.Unmarshal([]byte(d), dst)
+}
+
+//UnmarshalJSONAt unmarshals a specific key in the config into dst
+func (c ConfigBytes) UnmarshalJSONAt(dst interface{}, key string) error {
+	var full = make(map[interface{}]interface{})
+	if err := c.UnmarshalJSON(&full); err != nil {
+		return err
+	}
+	d, err := json.Marshal(full[key])
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal([]byte(d), dst)
 }
 
 //PopulateEnvConfig uses the "env" tag for struct fields to load environment
