@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"gopkg.in/yaml.v2"
+	"io"
+	"fmt"
+	"encoding/json"
 	"os"
 	"path"
 	"reflect"
@@ -11,6 +14,13 @@ import (
 	"strings"
 	"text/template"
 )
+
+// - Generic SSL configuration interace
+// 
+type AppConfiguration interface {
+	IsSslEnabled() bool
+	GetSslSecretName() string
+}
 
 //- ConfigBytes Functions ------------------------------------------------------
 type ConfigBytes []byte
@@ -39,6 +49,21 @@ func ReadConfigFile(file string) (ConfigBytes, error) {
 	}
 
 	return ConfigBytes(configBytes.Bytes()), nil
+}
+
+func LoadJsonConfigFile(configFile string, conf AppConfiguration) (err error) {
+	var file io.Reader
+	if configFile == "" {
+		file = strings.NewReader("{}")
+	} else if file, err = os.Open(configFile); err != nil {
+		return fmt.Errorf("Failed to open file '%s'. Error: %v", configFile, err)
+	}
+	decoder := json.NewDecoder(file)
+	if err = decoder.Decode(conf); err != nil {
+		return fmt.Errorf("Failed to decode file '%s'. Error: %v", configFile, err)
+	}
+	PopulateEnvConfig(conf)
+	return nil
 }
 
 func (c ConfigBytes) Unmarshal(dst interface{}) error {

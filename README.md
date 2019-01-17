@@ -169,3 +169,37 @@ This is for foundation-go contributors to run redis tests in foundation-go.
 Foundation-go has tests that actually connect to a local Redis server. These tests are not run in regular `go test ./...` command.
 
 To run these tests, you need to run a local Redis server *without password* on the port 6379, then run test with this environment variable and command: `TEST_REDIS=true go test ./...`.
+
+### Generic application environment:
+* Provide generic ways of loading environments from Cloud (local).
+* Note: It supports with/without Json configuration file (not other format). Developer needs to define the environment bindings in the Configure structure.
+```
+  // Implement two functions for Configuration struct (where defined environment bindings):
+    func (c Configuration) IsSslEnabled() bool {return c.SslEnabled == "true"}
+    func (c Configuration) GetSslSecretName() string {return c.SslSecretName}
+  //
+    main(){
+      ...
+      conf := &Configuration{}
+      err := appenv.SetupAppEnv(*configurationFlag, conf)
+      ...
+      err := appenv.RunWebService(conf.IsSslEnabled(), conf.BindAddress, svr.Engine)
+    }
+```
+
+* Environments:
+```
+  CLOUD_PROVIDER: AWS:   Pulls environments from secret manager, overwrites existed environment.
+                  LOCAL: Use existed environment.
+  SSL_ENABLED: true or false (files: server.crt & server.key)
+               When CLOUD_PROVIDER set to AWS, downloads certificats from secret (SSL_SECRET_NAME) and
+               save to the working directory.
+               When set to LOCAL, uses ceritificate and key file under the application work dir.
+
+  // AWS specific environment defined in task definition:
+  AWS_REGION: us-east-1 (default value)
+  AWSSM_NAME: dev/application/uns
+  // defined in above secret.
+  SSL_SECRET_NAME: dev/application/appcerts
+
+```

@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
 	"github.com/coupa/foundation-go/health"
 	"github.com/gin-gonic/gin"
 )
