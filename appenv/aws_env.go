@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"github.com/coupa/foundation-go/config"
+	"crypto/rsa"
 )
 
 const (
@@ -13,6 +14,8 @@ const (
 	defaultAwsRegion = "us-east-1"
 	awsSmName        = "AWSSM_NAME"
 	sslSecretName    = "SSL_SECRET_NAME"
+	
+	awsDBPublictKey  = "rds_sslca"
 )
 
 type AwsEnv struct {
@@ -34,26 +37,17 @@ func (ae AwsEnv) LoadEnv() (err error) {
 		os.Setenv(awsRegion, defaultAwsRegion)
 	}
 	if s = os.Getenv(awsSmName); s == "" {
-		err = fmt.Errorf("Environment '%s' not set", awsSmName)
+		err = fmt.Errorf("'%s' not found", awsSmName)
 	} else {
 		err = config.WriteSecretsToENV(s)
 	} 
-	return err
+	return
 }
 
-func(ae AwsEnv) ConfigureServer(confFile string, conf config.AppConfiguration) (err error) {
-	if err = config.LoadJsonConfigFile(confFile, conf); err == nil {
-		if conf.IsSslEnabled() {
-			err = ae.LoadSSL(conf)
-		}
-	}
-	return err
-}
-
-func (ae AwsEnv) LoadSSL(c config.AppConfiguration) error {
-	snName := c.GetSslSecretName()
+func (ae AwsEnv) LoadSslCertificate() error {
+	snName := os.Getenv(sslSecretName)
 	if snName == "" {
-		return fmt.Errorf("Environment parameter 'SSL_SECRET_NAME' not set")
+		return fmt.Errorf("%s not found", sslSecretName)
 	}
 	data, _, err := config.GetSecrets(snName)
 	if err != nil || len(data) == 0 {
@@ -68,4 +62,27 @@ func (ae AwsEnv) LoadSSL(c config.AppConfiguration) error {
 		}
 	}
 	return nil
+}
+
+// There may be multiple public keys for accessing to different endpoints.
+func (ae AwsEnv) LoadDbPublicKey(secretEnv, dataKeyEnv string) (*rsa.PublicKey, error) {
+	snName := os.Getenv(secretEnv)
+	if snName == "" {
+		return nil, fmt.Errorf("'%s' not found", secretEnv)
+	}
+	dataKey := os.Getenv(dataKeyEnv)
+	if dataKey == "" {
+		return nil, fmt.Errorf("'%s' not found", dataKey)
+	}
+
+	data, _, err := config.GetSecrets(snName)
+	if err != nil || len(data) == 0 {
+		return nil, fmt.Errorf("Fail to get secret from '%s': %v", snName, err)
+	}
+	if v, ok := data[dataKey]; ok {
+		decoded := strings.Replace(v, `\n`, "\n", -1)
+		return DecodeRsaKey([]byte(decoded))
+	} else {
+		return nil, fmt.Errorf("Failed to find key '%s' from secret '%s'", dataKey, snName)
+	}
 }

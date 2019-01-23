@@ -2,7 +2,7 @@ package appenv
 
 import (
 	"fmt"
-	"github.com/coupa/foundation-go/config"
+	"crypto/rsa"
 	)
 
 const (
@@ -13,6 +13,9 @@ const (
 
 	defaultSslCertFile = "./server.crt"
 	defaultSslKeyFile  = "./server.key"
+
+	dbSecretName     = "DB_SECRET_NAME"
+
 	)
 
 var (
@@ -22,7 +25,8 @@ var (
 
 type AppEnvironment interface {
 	LoadEnv() error
-	ConfigureServer(confFile string, conf config.AppConfiguration) error
+	LoadSslCertificate() error
+	LoadDbPublicKey(entryEnv, keyEnv string) (*rsa.PublicKey, error)
 }
 
 func NewAppEnv(provider string) (appEnv AppEnvironment, err error) {

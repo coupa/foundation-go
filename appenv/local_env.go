@@ -3,11 +3,13 @@ package appenv
 import (
 	"fmt"
 	"os"
-	"github.com/coupa/foundation-go/config"
+	"io/ioutil"
+	"crypto/rsa"
 )
 
 type LocalEnv struct {
 	sslCertFiles []string
+	DbPublicKey  *rsa.PublicKey
 }
 
 func NewLocalEnv() AppEnvironment {
@@ -20,24 +22,41 @@ func (e LocalEnv) LoadEnv() error {
 	return nil
 }
 
-func(e LocalEnv) ConfigureServer(confFile string, conf config.AppConfiguration) (err error) {
-	if err = config.LoadJsonConfigFile(confFile, conf); err == nil {
-		if conf.IsSslEnabled() {
-			err = e.LoadSSL(conf)
-		}
-	}
-	return err
-}
-
-func (e LocalEnv) LoadSSL(c config.AppConfiguration) error {
+func (e LocalEnv) LoadSslCertificate() error {
 	for _, file := range e.sslCertFiles {
-		if _, err := os.Stat(file); err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("File '%s' not Found.", file)
-			} else {
-				return fmt.Errorf("File '%s' not Found. Error: %v", file, err)
-			}
+		if err := FileExists(file); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+// Does not support database ssl connection
+func (e LocalEnv) LoadDbPublicKey(envSecretFile, notUse string) (*rsa.PublicKey, error) {
+	return nil, nil
+	file := os.Getenv(envSecretFile)
+	if file == "" {
+		return nil, fmt.Errorf("'%s' not found", envSecretFile)
+	}
+
+	if err := FileExists(file); err != nil {
+		return nil, err
+	}	
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("Fail to read from '%s': %v", file, err)
+	}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("No key found in '%s'", file)
+	}
+	return DecodeRsaKey(data)
+}
+
+func FileExists(file string) (err error) {
+	if _, err = os.Stat(file); err != nil {
+		if os.IsNotExist(err) {
+			err = fmt.Errorf("File '%s' not Found", file)
+		}
+	}
+	return
 }

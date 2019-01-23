@@ -170,8 +170,8 @@ Foundation-go has tests that actually connect to a local Redis server. These tes
 
 To run these tests, you need to run a local Redis server *without password* on the port 6379, then run test with this environment variable and command: `TEST_REDIS=true go test ./...`.
 
-### Generic application environment:
-* Provide generic ways of loading environments from Cloud (local).
+### Environment loading:
+* Note: Application should set the prefered default environment.
 * Note: It supports with/without Json configuration file (not other format). Developer needs to define the environment bindings in the Configure structure.
 ```
   // Implement two functions for Configuration struct (where defined environment bindings):
@@ -181,25 +181,40 @@ To run these tests, you need to run a local Redis server *without password* on t
     main(){
       ...
       conf := &Configuration{}
-      err := appenv.SetupAppEnv(*configurationFlag, conf)
+        // Application should set the prefered default environment.
+      appEnv, err := appenv.NewAppEnv(provider)
+        // It overwrites existed environment
+      err = appEnv.LoadEnv()
+        // Load config file to conf
+      err = config.LoadJsonConfigFile(configFile, conf)
+        //Overwrite conf from environment parameters
+      config.PopulateEnvConfig(conf)
+      if conf.SslEnabled == "true" {
+        err = appEnv.LoadSslCertificate()
+      }
       ...
-      err := appenv.RunWebService(conf.IsSslEnabled(), conf.BindAddress, svr.Engine)
-    }
+      //Application make decision on running on TLS or not.
+      if conf.SslEnabled == "true" {
+        err = svr.Engine.RunTLS(conf.BindAddress, appenv.SslCertFile, appenv.SslKeyFile)
+      } else {
+        err = svr.Engine.Run(conf.BindAddress)
+      }
+   }
 ```
 
 * Environments:
 ```
   CLOUD_PROVIDER: AWS:   Pulls environments from secret manager, overwrites existed environment.
-                  LOCAL: Use existed environment.
+                  LOCAL: Use existed environment (default).
   SSL_ENABLED: true or false (files: server.crt & server.key)
                When CLOUD_PROVIDER set to AWS, downloads certificats from secret (SSL_SECRET_NAME) and
                save to the working directory.
                When set to LOCAL, uses ceritificate and key file under the application work dir.
 
-  // AWS specific environment defined in task definition:
-  AWS_REGION: us-east-1 (default value)
-  AWSSM_NAME: dev/application/uns
-  // defined in above secret.
+  // AWS specific environment defined in task definition (sample):
+  AWS_REGION: us-east-1 (default)
+  // Secret for application enviornment/configurations:
+  AWSSM_NAME: {dev/application/app_name}
+  // Secret for SSL certificates
   SSL_SECRET_NAME: dev/application/appcerts
-
 ```
