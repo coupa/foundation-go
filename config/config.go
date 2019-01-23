@@ -20,6 +20,8 @@ import (
 type AppConfiguration interface {
 	IsSslEnabled() bool
 	GetSslSecretName() string
+	IsDbSslEnabled() bool
+	GetDbSecretName() string
 }
 
 //- ConfigBytes Functions ------------------------------------------------------

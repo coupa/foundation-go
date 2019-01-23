@@ -6,6 +6,9 @@ import (
 	"os"
 	"strings"
 	"github.com/coupa/foundation-go/config"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 )
 
 const (
@@ -13,6 +16,8 @@ const (
 	defaultAwsRegion = "us-east-1"
 	awsSmName        = "AWSSM_NAME"
 	sslSecretName    = "SSL_SECRET_NAME"
+	dbSecretName     = "DB_SECRET_NAME"
+	awsDBPublictKey  = "rds_sslca"
 )
 
 type AwsEnv struct {
@@ -53,7 +58,7 @@ func(ae AwsEnv) ConfigureServer(confFile string, conf config.AppConfiguration) (
 func (ae AwsEnv) LoadSSL(c config.AppConfiguration) error {
 	snName := c.GetSslSecretName()
 	if snName == "" {
-		return fmt.Errorf("Environment parameter 'SSL_SECRET_NAME' not set")
+		return fmt.Errorf("Environment parameter '%s' not set", sslSecretName)
 	}
 	data, _, err := config.GetSecrets(snName)
 	if err != nil || len(data) == 0 {
@@ -68,4 +73,33 @@ func (ae AwsEnv) LoadSSL(c config.AppConfiguration) error {
 		}
 	}
 	return nil
+}
+
+func (ae AwsEnv) LoadDbPublicKey(c config.AppConfiguration) (*rsa.PublicKey, error) {
+	snName := c.GetDbSecretName()
+	if snName == "" {
+		return nil, fmt.Errorf("Environment parameter '%s' not set", dbSecretName)
+	}
+	data, _, err := config.GetSecrets(snName)
+	if err != nil || len(data) == 0 {
+		return nil, fmt.Errorf("Fail to get secret from '%s': %v", snName, err)
+	}
+	if v, ok := data[awsDBPublictKey]; ok {
+		decoded := strings.Replace(v, `\n`, "\n", -1)
+		block, _ := pem.Decode([]byte(decoded))
+		if block == nil || block.Type != "PUBLIC KEY" {
+			return nil, fmt.Errorf("Failed to decode PEM block containing public key")
+		}
+		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse PKI public key: %v", err)
+		}
+		if rsaPubKey, ok := pub.(*rsa.PublicKey); ok {
+			return rsaPubKey, nil
+		} else {
+			return nil, fmt.Errorf("Failed to dereference value.")
+		}
+	} else {
+		return nil, fmt.Errorf("Failed to find key '%s' from secret '%s'", awsDBPublictKey, snName)
+	}
 }
