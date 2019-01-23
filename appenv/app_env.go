@@ -2,6 +2,7 @@ package appenv
 
 import (
 	"fmt"
+	"crypto/rsa"
 	"github.com/coupa/foundation-go/config"
 	)
 
@@ -23,6 +24,8 @@ var (
 type AppEnvironment interface {
 	LoadEnv() error
 	ConfigureServer(confFile string, conf config.AppConfiguration) error
+	LoadSSL(config.AppConfiguration) error
+	LoadDbPublicKey(config.AppConfiguration) (*rsa.PublicKey, error)
 }
 
 func NewAppEnv(provider string) (appEnv AppEnvironment, err error) {
