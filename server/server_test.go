@@ -116,6 +116,7 @@ var _ = Describe("Server", func() {
 
 			var h health.Health
 			json.Unmarshal(d, &h)
+			Expect(h["status"]).To(Equal(health.CRIT))
 			Expect(len(h["dependencies"].([]interface{}))).To(Equal(2))
 
 			processed := map[string]bool{}
@@ -134,6 +135,49 @@ var _ = Describe("Server", func() {
 				}
 			}
 			Expect(processed).To(HaveLen(2))
+		})
+
+		It("makes a server with middleware and detailed health", func() {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				h := health.Health{
+					"status":   health.WARN,
+					"version":  "fakeVer",
+					"revision": "fakeRev",
+				}
+				d, _ := json.Marshal(h)
+				fmt.Fprint(w, string(d))
+			}))
+			defer ts.Close()
+
+			svr := Server{
+				Engine:               gin.New(),
+				AppInfo:              &health.AppInfo{},
+				ProjectInfo:          &health.ProjectInfo{},
+				AdditionalHealthData: map[string]*health.AdditionalHealthData{},
+			}
+			serviceCheck1 := health.WebCheck{
+				Name: "some web",
+				Type: "service",
+				URL:  ts.URL,
+			}
+
+			custom := health.AdditionalHealthData{
+				DependencyChecks: []health.HealthChecker{serviceCheck1},
+			}
+
+			svr.RegisterDetailedHealth("/v1", "This is v1 detailed health", &custom)
+
+			req, _ := http.NewRequest("GET", "/v1/health/detailed", nil)
+			resp := httptest.NewRecorder()
+			svr.Engine.ServeHTTP(resp, req)
+
+			Expect(resp.Code).To(Equal(http.StatusOK))
+			d, _ := ioutil.ReadAll(resp.Body)
+
+			var h health.Health
+			json.Unmarshal(d, &h)
+			Expect(h["status"]).To(Equal(health.WARN))
+			Expect(len(h["dependencies"].([]interface{}))).To(Equal(1))
 		})
 
 		Describe("Timeout", func() {
@@ -171,6 +215,7 @@ var _ = Describe("Server", func() {
 
 				var h health.Health
 				json.Unmarshal(d, &h)
+				Expect(h["status"]).To(Equal(health.CRIT))
 				Expect(len(h["dependencies"].([]interface{}))).To(Equal(3))
 
 				processed := map[string]bool{}
@@ -218,6 +263,7 @@ var _ = Describe("Server", func() {
 				d, _ := ioutil.ReadAll(resp.Body)
 				var h health.Health
 				json.Unmarshal(d, &h)
+				Expect(h["status"]).To(Equal(health.OK))
 				Expect(h["description"].(string)).To(Equal("slash"))
 
 				req, _ = http.NewRequest("GET", "/v10/health/detailed", nil)
@@ -228,6 +274,7 @@ var _ = Describe("Server", func() {
 				d, _ = ioutil.ReadAll(resp.Body)
 				var h2 health.Health
 				json.Unmarshal(d, &h2)
+				Expect(h["status"]).To(Equal(health.OK))
 				Expect(h2["description"].(string)).To(Equal("10"))
 			})
 
@@ -253,6 +300,7 @@ var _ = Describe("Server", func() {
 				d, _ := ioutil.ReadAll(resp.Body)
 				var h health.Health
 				json.Unmarshal(d, &h)
+				Expect(h["status"]).To(Equal(health.OK))
 				Expect(h["description"].(string)).To(Equal("hello"))
 
 				req, _ = http.NewRequest("GET", "/v2/health/detailed", nil)
@@ -263,6 +311,7 @@ var _ = Describe("Server", func() {
 				d, _ = ioutil.ReadAll(resp.Body)
 				var h2 health.Health
 				json.Unmarshal(d, &h2)
+				Expect(h["status"]).To(Equal(health.OK))
 				Expect(h2["description"].(string)).To(Equal("pizza"))
 
 				req, _ = http.NewRequest("GET", "/health/detailed", nil)
@@ -273,6 +322,7 @@ var _ = Describe("Server", func() {
 				d, _ = ioutil.ReadAll(resp.Body)
 				var h3 health.Health
 				json.Unmarshal(d, &h3)
+				Expect(h["status"]).To(Equal(health.OK))
 				Expect(h3["description"].(string)).To(Equal("empty"))
 			})
 		})

@@ -37,7 +37,6 @@ func (wc WebCheck) Check() *DependencyInfo {
 	} else {
 		code := resp.StatusCode
 		if code < 300 {
-			defer resp.Body.Close()
 			ver, rev = wc.parseBody(resp, &state)
 		} else if code < 400 {
 			//3xx redirect code. Set WARN
@@ -80,6 +79,8 @@ func (wc WebCheck) parseBody(resp *http.Response, state *DependencyState) (strin
 		state.Details = "Unable to read the response body: " + err.Error()
 		return "", ""
 	}
+	defer resp.Body.Close()
+
 	var jsonData map[string]string
 	if err = json.Unmarshal(data, &jsonData); err != nil {
 		if wc.Type != TypeThirdParty {

@@ -138,6 +138,7 @@ func (s *Server) detailedHealth(c *gin.Context) {
 			})
 		}
 	}
+	h.SetStatus()
 	c.JSON(http.StatusOK, h)
 }
 

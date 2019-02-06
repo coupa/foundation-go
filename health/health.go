@@ -4,10 +4,14 @@ import (
 	"time"
 
 	"github.com/coupa/foundation-go/config"
-	"github.com/gin-gonic/gin"
 )
 
 var (
+	HealthWeights = map[string]int{
+		"OK":   1,
+		"WARN": 2,
+		"CRIT": 3,
+	}
 	startTime time.Time
 )
 
@@ -107,6 +111,20 @@ func (h Health) SetDependencies(d []DependencyInfo) {
 	h["dependencies"] = d
 }
 
+func (h Health) SetStatus() {
+	if h["dependencies"] == nil {
+		return
+	}
+	worst := OK
+	for _, d := range h["dependencies"].([]interface{}) {
+		dep := d.(DependencyInfo)
+		if HealthWeights[dep.State.Status] > HealthWeights[worst] {
+			worst = dep.State.Status
+		}
+	}
+	h["status"] = worst
+}
+
 //NewSimpleHealth creates a health struct that can be rendered for the simple health check.
 func NewSimpleHealth(ai *AppInfo, status string) Health {
 	if ai == nil {
@@ -145,7 +163,10 @@ type HealthChecker interface {
 type AdditionalHealthData struct {
 	DependencyChecks []HealthChecker
 	//The custom data can override the default health detail values
-	DataProvider func(*gin.Context) map[string]interface{}
+	//Using the `server` package, by default it will pass in *gin.Context as the
+	//parameter. So using the `server` package, you can expect and cast
+	//ctx to *gin.Context
+	DataProvider func(ctx interface{}) map[string]interface{}
 
 	//Description is set in server.RegisterDetailedHealth function, so there is no need
 	//to set this field when initializing AdditionalHealthData struct

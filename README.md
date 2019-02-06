@@ -99,7 +99,8 @@ func main() {
 
   ahd1 := health.AdditionalHealthData{
     DependencyChecks: []HealthChecker{dbCheck, serviceCheck1},
-    DataProvider:    func(c *gin.Context) map[string]interface{}{
+    DataProvider:    func(ctx interface{}) map[string]interface{}{
+      context := ctx.(*gin.Context)   //When using the `server` package, ctx is a *gin.Context
       return map[string]interface{}{
         "custom": "data",
       }
