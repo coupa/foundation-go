@@ -92,7 +92,7 @@ func (s *Statsd) WithSampleRate(rate float32, tags ...map[string]string) *Statsd
 //Count adds n to the EVENTS measurement with the specific name tag
 func (s *Statsd) Count(name string, value interface{}, tags ...map[string]string) {
 	tags = addNameTag(name, tags...)
-	s.Clone(tags...).Count(EVENTS, value)
+	s.clone(tags...).Count(EVENTS, value)
 }
 
 //Increment increment the EVENTS measurement with the specific name tag. It is equivalent to Count(name, 1).
@@ -104,7 +104,7 @@ func (s *Statsd) Increment(name string, tags ...map[string]string) {
 //Gauge records an absolute value for the EVENTS measurement with the specific name tag.
 func (s *Statsd) Gauge(name string, value interface{}, tags ...map[string]string) {
 	tags = addNameTag(name, tags...)
-	s.Clone(tags...).Gauge(EVENTS, value)
+	s.clone(tags...).Gauge(EVENTS, value)
 }
 
 //Timing sends a timing value to the TRANSACTIONS measurement with the specific name tag.
@@ -131,13 +131,13 @@ func (s *Statsd) MeasureTiming(name string, functionToMeasure func(), tags ...ma
 //Histogram sends an histogram value to an EVENTS measurement with the specific name tag.
 func (s *Statsd) Histogram(name string, value interface{}, tags ...map[string]string) {
 	tags = addNameTag(name, tags...)
-	s.Clone(tags...).Histogram(EVENTS, value)
+	s.clone(tags...).Histogram(EVENTS, value)
 }
 
 //Unique sends the given value to a set bucket.
-func (s *Statsd) Unique(name string, value interface{}, tags ...map[string]string) {
+func (s *Statsd) Unique(name string, value string, tags ...map[string]string) {
 	tags = addNameTag(name, tags...)
-	s.Clone(tags...).Unique(name, value)
+	s.clone(tags...).Unique(name, value)
 }
 
 // Flush flushes the Client's buffer.
