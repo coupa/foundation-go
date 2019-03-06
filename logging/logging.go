@@ -27,7 +27,7 @@ type CustomJSONFormatter struct {
 }
 
 func (f *CustomJSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	entry.Data["timestamp"] = entry.Time.UTC().Format("2006-01-02 15:04:05 -0700")
+	entry.Data["timestamp"] = entry.Time.UTC()
 	entry.Data["level"] = entry.Level.String()
 	entry.Data["version"] = f.version
 
