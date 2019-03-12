@@ -99,7 +99,8 @@ func main() {
 
   ahd1 := health.AdditionalHealthData{
     DependencyChecks: []HealthChecker{dbCheck, serviceCheck1},
-    DataProvider:    func(c *gin.Context) map[string]interface{}{
+    DataProvider:    func(ctx interface{}) map[string]interface{}{
+      context := ctx.(*gin.Context)   //When using the `server` package, ctx is a *gin.Context
       return map[string]interface{}{
         "custom": "data",
       }
@@ -136,16 +137,109 @@ func main() {
 
 ### Env variables
 
-`health.AppInfo{}.FillFromENV` and `health.ProjectInfo{}.FillFromENV` will by default load from these Env variables:
+`health.AppInfo#FillFromENV` and `health.ProjectInfo#FillFromENV` will by default load from these Env variables into AppInfo and ProjectInfo structs respectively:
 
+AppInfo:
 * APPLICATION_NAME
 * HOSTNAME
-* SERVER_BIND_ADDRESS
+
+ProjectInfo:
 * PROJECT_REPO
 * PROJECT_HOME
 * PROJECT_OWNERS: Comma-separated owner names.
 * PROJECT_LOG_URLS: Comma-separated log URLs.
 * PROJECT_STATS_URLS: Comma-separated metrics URLs.
+
+## App Environments:
+
+The `appenv` package provides functionalities to load additional environment variables and SSL certificates based on the deployment environment. For example for AWS, it will load environment variables from AWS Secrets Manager and set them as environment variables. For SSL, it will also load the certificates from AWS Secrets Manager and save them as files.
+
+To use this package, you need to specify the following environment variables when you application runs:
+```
+* Required environment variables:
+  CLOUD_PROVIDER:
+    * "AWS"   - Pulls environments from Secrets Manager and overwrites existed environment variables. Pulls SSL certificates from Secrets Manager and save them to files.
+    * "LOCAL" - For development and tests.
+
+* Optional environment variables:
+  SSL_ENABLED: For AWS, this can be placed in either task definition or Secrets Manager
+    * "true"
+    * "false"
+
+* AWS - required specific environment variables (typically defined in task definition):
+  AWS_REGION:
+    * "us-east-1" (default)
+
+  AWSSM_NAME:
+    * Example: "dev/application/app_name" - name of AWS secret which stores other environment variables or parameters.
+
+  SSL_SECRET_NAME:
+    * Example: "dev/application/appcerts" - name of secret that stores the SSL certificates. The keys for the certificates should be *app_ssl_certificate* and *app_ssl_certificate_key*.
+```
+Usage example:
+```
+import "github.com/coupa/foundation-go/config"
+
+{
+  //This will attempt to get the provider from "CLOUD_PROVIDER" environment variable
+  appEnv := appenv.NewAppEnv("")
+
+  //This will create an AWS environment
+  appEnv = appenv.NewAppEnv(appenv.AWSProvider)
+
+  //For AWS, this will:
+  //1. Get AWS region from "AWS_REGION" env variable. If not found, it will default it to "us-east-1"
+  //2. Using "AWSSM_NAME" env value as the secret name, load environment variables from AWS Secrets Manager into environment variables.
+  //3. Set whether SSL is enabled from the "SSL_ENABLED" env value.
+  //For AWS, don't call this method if you do not need the above.
+  err := appEnv.LoadEnv()
+
+  if appEnv.IsSSLEnabled() {
+    //For AWS, this will use the secret name in "SSL_SECRET_NAME" env variable to download certificates from AWS Secrets Manager
+    err = appEnv.PrepareSSLCertificate()
+  }
+  ...
+  e := gin.New()
+  if appEnv.IsSSLEnabled() {
+    e.RunTLS(":8080", appEnv.GetSSLCertPath(), appEnv.GetSSLKeyPath())
+  } else {
+    e.Run(":8080")
+  }
+}
+```
+### Configuration Binding:
+
+The `config` package has functionalities to bind different sources, such as environment variables, JSON or YAML file, to your configuration struct based on the tags that you defined.
+
+This example is to show how the functions work. It is unlikely that one application would load both JSON and YAML config files.
+```
+// sample configuration structure:
+type configuration struct {
+  Dsn                string `env:"SOME_DSN" json:"-" yaml:"-"`
+  DbName             string `json:"db_name" yaml:"-"`
+  BindAddress        string `json: "-" yaml:"address"`
+}
+
+import "github.com/coupa/foundation-go/config"
+...
+{
+  conf := configuration{}
+
+  //This loads DSN from "SOME_DSN" environment variable
+  //This will not touch DbName or BindAddress
+  config.PopulateEnvConfig(&conf)
+
+  //This loads only DbName
+  //If other public fields don't have the `json:"-"` tag, they will also be loaded respectively to their json tag or their names.
+  cf := config.ReadConfigFile("json_config.json")
+  err := cf.UnmarshalJSON(&conf)
+
+  //This loads only BindAddress
+  //If other public fields don't have the `yaml:"-"` tag, they will also be loaded respectively to their yaml tag or their names.
+  cf = config.ReadConfigFile("yaml_config.yml")
+  err = cf.UnmarshalYAML(&conf)
+}
+```
 
 ### Enabling Secrets Manager Tests
 
