@@ -14,56 +14,91 @@ To set up logging, you need to call `logging.InitStandardLogger` early in your a
 
 Foundation also provides Gin-backed (https://github.com/gin-gonic/gin) server, several middlewares, and health check mechanisms to support the microservice standard.
 
-An example of usage:
+### Logging
 ```
 import (
-  "github.com/coupa/foundation-go/config"
-  "github.com/coupa/foundation-go/health"
   "github.com/coupa/foundation-go/logging"
-  "github.com/coupa/foundation-go/metrics"
-  "github.com/coupa/foundation-go/middleware"
-  "github.com/coupa/foundation-go/server"
-  "github.com/gin-gonic/gin"
   log "github.com/sirupsen/logrus"
 )
 
 func main() {
-
-  //***************************** Logging ***********************************
-
   //logging.InitStandardLogger must be called early in your app.
   logging.InitStandardLogger("v1.0.0")
 
-  //The InitStandardLogger above will make logrus' standard logger to use the standard format
-  log.Info("this log will have the required standard fields")
+  //The InitStandardLogger above will make logrus' standard logger use the standard format
+  //So any call on logrus package (log) will have the standard fields.
+  log.Info("this log will have the required standard fields in JSON format")
+}
+```
+### Metrics (Statsd)
+The design of the metrics package is to simplify the code of adding required and custom tags, while setting the standard measurement names (events/transactions) automatically.
+```
+import (
+  "github.com/coupa/foundation-go/metrics"
+)
 
-  //************************* Secrets Manager *******************************
-
-  //To use the GetSecrets or WriteSecretsToENV functions in config/aws_secrets_manager.go,
-  //you need to have AWS credentials configured as environment variables or configure
-  //AWS EC2 IAM roles to allow access (see https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html).
-  //If you have other ways of authentication, you can provide your own session with
-  //GetSecretsWithSession or WriteSecretsToENVWithSession.
-
-  //This will grab values from secrets whose key names are in the format of an
-  //environment variable name (all uppercase characters with digits and connected
-  //with underscores. No dash or other symbols) and set them to corresponding
-  //environment variables.
-  err := config.WriteSecretsToENV("dev/application/for_testing")
-
-  //So if "dev/application/for_testing" has {"GOOD_ENV1":"good","bad-env2":"bad"},
-  //the above method will set only GOOD_ENV1="good" and not the other one
-
-  //***************************** Metrics ***********************************
-
-  //These enable metrics to know how to initialize the Statsd client
+func main() {
+  //Setting the metrics factory so that it can initialize the Statsd client
   factory := func() *metrics.Statsd {
     return metrics.NewStatsd("address", "prefix.", "version", "app", 1.0)
   }
   metrics.SetFactory(factory)
 
-  //****************************** Server ***********************************
+  //"interesting.metric" will become the "name" tag of the metric
+  metrics.Increment("interesting.metric")
 
+  //Add custom tags to the metric. All metrics methods can take optional maps as custom tags.
+  tags := map[string]string{"tag1": "value1", "tag2": "value2"}
+  metrics.Increment("with.custom.tags", tags)
+}
+
+func someFunc() {
+  //This measures the execution time of this function and emits the metric at the end of the method.
+  defer metrics.NewTiming("timing.someFunc").Send()
+
+  t := metrics.NewTiming("timing.particular.code")
+  ...
+  t.Send()
+}
+```
+### Secrets Manager
+```
+import (
+  "github.com/coupa/foundation-go/config"
+)
+
+func main() {
+  //To use the GetSecrets or WriteSecretsToENV functions in config/aws_secrets_manager.go,
+  //you need to have AWS credentials configured as environment variables or configure
+  //AWS EC2 IAM roles to allow access (see https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html).
+  //If you have other ways of authentication, you can provide your own session with
+  //config.GetSecretsWithSession or config.WriteSecretsToENVWithSession.
+
+  //GetSecrets will download all keys and values from the specific secret name
+  //`secrets` is of map[string]string
+  secrets, err := config.GetSecrets("dev/application/some_secret")
+
+  //WriteSecretsToENV will grab values from secret whose key names are in the format of an
+  //environment variable name (all uppercase characters with digits and connected
+  //with underscores. No dash or other symbols) and set them to corresponding
+  //environment variables.
+  err = config.WriteSecretsToENV("dev/application/for_testing")
+
+  //For example, if "dev/application/for_testing" has {"GOOD_ENV1":"good","bad-env2":"bad"},
+  //WriteSecretsToENV will set only GOOD_ENV1="good" and not the other one
+}
+```
+### Server, Middlewares, and Health Checks
+```
+import (
+  "github.com/coupa/foundation-go/health"
+  "github.com/coupa/foundation-go/logging"
+  "github.com/coupa/foundation-go/middleware"
+  "github.com/coupa/foundation-go/server"
+  "github.com/gin-gonic/gin"
+)
+
+func main() {
   svr := server.Server{
     Engine:               gin.New(),
     AppInfo:              &health.AppInfo{...},     //You should fill in this info
@@ -74,31 +109,40 @@ func main() {
   //*** Middlewares ***
 
   //Register the middlewares first before registering routes
+
+  //This forwards or generates correlation ID in the response header
   svr.UseMiddleware(middleware.Correlation())
+
+  //This enables metrics collection of request counting and timing
   svr.UseMiddleware(middleware.Metrics())
+
+  //This writes access logs in the microservice standard format.
+  //If the parameter is true: `middleware.RequestLogger(true)`, it won't write access logs
+  //for simple health check requests, which some applications may prefer this
+  //in order to have a cleaner log
   svr.UseMiddleware(middleware.RequestLogger(false))
 
   //*** Health ***
 
-  //Declare or create the health checks that you want
+  //Create the detailed health checks that your service depends on
   dbCheck := health.SQLCheck{
     Name: "mysql",
     Type: "internal",
-    DB: ...,  //Some *sql.DB
+    DB: ...,      //Some *sql.DB
   }
-  serviceCheck1 := health.WebCheck{
+  serviceCheck := health.WebCheck{
   	Name: "some web 1",
   	Type: "service",
-  	URL:  "https://some.web/health",
+  	URL:  "https://some.web/health", //If the target is a Coupa service, make sure to use the "simple health" endpoint
   }
-  serviceCheck2 := health.WebCheck{
-  	Name: "some web 2",
-  	Type: "service",
-  	URL:  "https://some.web2/health",
+  redisCheck := health.RedisCheck{
+  	Name: "redis",
+  	Type: "internal",
+  	Client: ...,    //Some *redis.Client
   }
 
-  ahd1 := health.AdditionalHealthData{
-    DependencyChecks: []HealthChecker{dbCheck, serviceCheck1},
+  ahdV2 := health.AdditionalHealthData{
+    DependencyChecks: []HealthChecker{dbCheck, serviceCheck},
     DataProvider:    func(c *gin.Context) map[string]interface{}{
       return map[string]interface{}{
         "custom": "data",
@@ -106,22 +150,21 @@ func main() {
     },
   }
 
-  adh2 := health.AdditionalHealthData{
-    DependencyChecks: []HealthChecker{dbCheck, serviceCheck1, serviceCheck2},
+  adhV3 := health.AdditionalHealthData{
+    DependencyChecks: []HealthChecker{dbCheck, serviceCheck, redisCheck},
   }
 
   //Register 3 versions of the detailed health. Note that they are different as
   //"/v1" has additional custom data but does not have `serviceCheck2` dependency check,
   //and "/v3" has no dependency or additional data.
-  svr.RegisterDetailedHealth("/v1", "v1 of app detailed health", ahd1)
-  svr.RegisterDetailedHealth("/v2", "v2 of app detailed health", ahd2)
-  svr.RegisterDetailedHealth("/v3", "v3 without custom data or dependency check", nil)
+  svr.RegisterDetailedHealth("/v1", "v1 without custom data or dependency check", nil)
+  svr.RegisterDetailedHealth("/v2", "v2 with mysql and service checks", adhV2)
+  svr.RegisterDetailedHealth("/v3", "v3 with mysql, service, and redis checks", adhV3)
+
+  //Simple health is at /health
   svr.RegisterSimpleHealth()
 
   someHandler := func(c *gin.Context) {
-    //Emitting statsd metric
-    metrics.Increment("interesting.metric")
-
     logging.RL(c).Info("This is logging with correlation ID")
 
     c.JSON(200, `{"he":"llo"}`)
@@ -130,7 +173,8 @@ func main() {
   //Register routes
   svr.Engine.GET("/test", someHandler)
 
-  svr.Engine.Run(":80") //svr.Engine.Run() without address parameter will run on ":8080"
+  svr.Engine.Run(":80") //This will run on port 80
+  //svr.Engine.Run() without address parameter will run on ":8080"
 }
 ```
 
