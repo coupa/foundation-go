@@ -8,6 +8,7 @@ import (
 const (
 	EVENTS       = "events"
 	TRANSACTIONS = "transactions"
+	GAUGES       = "gauges"
 )
 
 //- Package level client and factory
@@ -104,7 +105,7 @@ func (s *Statsd) Increment(name string, tags ...map[string]string) {
 //Gauge records an absolute value for the EVENTS measurement with the specific name tag.
 func (s *Statsd) Gauge(name string, value interface{}, tags ...map[string]string) {
 	tags = addNameTag(name, tags...)
-	s.clone(tags...).Gauge(EVENTS, value)
+	s.clone(tags...).Gauge(GAUGES, value)
 }
 
 //Timing sends a timing value to the TRANSACTIONS measurement with the specific name tag.
@@ -126,18 +127,6 @@ func (s *Statsd) NewTiming(name string, tags ...map[string]string) *StatsdTiming
 func (s *Statsd) MeasureTiming(name string, functionToMeasure func(), tags ...map[string]string) {
 	defer s.NewTiming(name, tags...).Send()
 	functionToMeasure()
-}
-
-//Histogram sends an histogram value to an EVENTS measurement with the specific name tag.
-func (s *Statsd) Histogram(name string, value interface{}, tags ...map[string]string) {
-	tags = addNameTag(name, tags...)
-	s.clone(tags...).Histogram(EVENTS, value)
-}
-
-//Unique sends the given value to a set bucket.
-func (s *Statsd) Unique(name string, value string, tags ...map[string]string) {
-	tags = addNameTag(name, tags...)
-	s.clone(tags...).Unique(name, value)
 }
 
 // Flush flushes the Client's buffer.
