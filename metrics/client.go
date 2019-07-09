@@ -24,16 +24,6 @@ func Timing(name string, value interface{}, tags ...map[string]string) {
 	Get().Timing(name, value, tags...)
 }
 
-// Histogram sends an histogram value to a name.
-func Histogram(name string, value interface{}, tags ...map[string]string) {
-	Get().Histogram(name, value, tags...)
-}
-
-// Unique sends the given value to a set name.
-func Unique(name string, value string, tags ...map[string]string) {
-	Get().Unique(name, value, tags...)
-}
-
 // Flush flushes the Client's buffer.
 func Flush() {
 	Get().Flush()
