@@ -117,6 +117,9 @@ func (s *Server) detailedHealth(c *gin.Context) {
 					}
 				}
 				h.AddDependency(w.di)
+				if health.IsMoreCritical(w.di.State.Status, h["status"].(string)) {
+					h["status"] = w.di.State.Status
+				}
 			case <-time.After(HealthTimeout):
 				break Label
 			}
@@ -127,6 +130,7 @@ func (s *Server) detailedHealth(c *gin.Context) {
 			if hc == nil {
 				continue
 			}
+			h["status"] = health.CRIT
 			h.AddDependency(&health.DependencyInfo{
 				Name:         hc.GetName(),
 				Type:         hc.GetType(),

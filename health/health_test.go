@@ -22,4 +22,21 @@ var _ = Describe("Health", func() {
 			Expect(d.Name).To(Equal("test2"))
 		})
 	})
+
+	Describe("IsMoreCritical", func() {
+		It("can add to an empty Health struct", func() {
+			Expect(IsMoreCritical(OK, WARN)).To(BeFalse())
+			Expect(IsMoreCritical(WARN, CRIT)).To(BeFalse())
+			Expect(IsMoreCritical(OK, CRIT)).To(BeFalse())
+			Expect(IsMoreCritical(OK, OK)).To(BeFalse())
+
+			Expect(IsMoreCritical(CRIT, WARN)).To(BeTrue())
+			Expect(IsMoreCritical(CRIT, OK)).To(BeTrue())
+			Expect(IsMoreCritical(WARN, OK)).To(BeTrue())
+
+			Expect(IsMoreCritical(OK, "")).To(BeTrue())
+			Expect(IsMoreCritical("", OK)).To(BeFalse())
+			Expect(IsMoreCritical("", "")).To(BeFalse())
+		})
+	})
 })
