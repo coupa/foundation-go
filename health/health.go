@@ -7,10 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var (
-	startTime time.Time
-)
-
 const (
 	OK   = "OK"
 	WARN = "WARN"
@@ -19,6 +15,17 @@ const (
 	TypeInternal   = "internal"
 	TypeService    = "service"
 	TypeThirdParty = "third-party"
+)
+
+var (
+	startTime time.Time
+
+	//CriticalLevels starts with 1 since 0 will be the value for invalid keys
+	CriticalLevels = map[string]int{
+		OK:   1,
+		WARN: 2,
+		CRIT: 3,
+	}
 )
 
 type AppInfo struct {
@@ -150,4 +157,9 @@ type AdditionalHealthData struct {
 	//Description is set in server.RegisterDetailedHealth function, so there is no need
 	//to set this field when initializing AdditionalHealthData struct
 	Description string
+}
+
+//IsMoreCritical checks if a's status level is more critical than b
+func IsMoreCritical(a string, b string) bool {
+	return CriticalLevels[a] > CriticalLevels[b]
 }

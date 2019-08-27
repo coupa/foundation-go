@@ -116,6 +116,7 @@ var _ = Describe("Server", func() {
 
 			var h health.Health
 			json.Unmarshal(d, &h)
+			Expect(h["status"]).To(Equal("CRIT"))
 			Expect(len(h["dependencies"].([]interface{}))).To(Equal(2))
 
 			processed := map[string]bool{}
@@ -134,6 +135,58 @@ var _ = Describe("Server", func() {
 				}
 			}
 			Expect(processed).To(HaveLen(2))
+		})
+
+		Describe("Status of detailed health", func() {
+			It("should depend on the dependencies' statuses", func() {
+				ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					h := health.Health{
+						"status":   health.WARN,
+						"version":  "fakeVer",
+						"revision": "fakeRev",
+					}
+					d, _ := json.Marshal(h)
+					fmt.Fprint(w, string(d))
+				}))
+				defer ts.Close()
+
+				svr := Server{
+					Engine:               gin.New(),
+					AppInfo:              &health.AppInfo{},
+					ProjectInfo:          &health.ProjectInfo{},
+					AdditionalHealthData: map[string]*health.AdditionalHealthData{},
+				}
+				svr.UseMiddleware(middleware.Correlation())
+
+				serviceCheck1 := health.WebCheck{
+					Name: "some web",
+					Type: "service",
+					URL:  ts.URL,
+				}
+
+				custom := health.AdditionalHealthData{
+					DependencyChecks: []health.HealthChecker{serviceCheck1},
+				}
+
+				svr.RegisterDetailedHealth("/v1", "This is v1 detailed health", &custom)
+
+				req, _ := http.NewRequest("GET", "/v1/health/detailed", nil)
+				resp := httptest.NewRecorder()
+				svr.Engine.ServeHTTP(resp, req)
+
+				Expect(resp.Code).To(Equal(http.StatusOK))
+				d, _ := ioutil.ReadAll(resp.Body)
+
+				var h health.Health
+				json.Unmarshal(d, &h)
+				Expect(h["status"]).To(Equal("WARN"))
+				Expect(len(h["dependencies"].([]interface{}))).To(Equal(1))
+
+				dep := h["dependencies"].([]interface{})[0].(map[string]interface{})
+				Expect(dep["name"]).To(Equal("some web"))
+				Expect(dep["type"]).To(Equal("service"))
+				Expect(dep["state"].(map[string]interface{})["status"]).To(Equal(health.WARN))
+			})
 		})
 
 		Describe("Timeout", func() {
@@ -171,6 +224,7 @@ var _ = Describe("Server", func() {
 
 				var h health.Health
 				json.Unmarshal(d, &h)
+				Expect(h["status"]).To(Equal(health.CRIT))
 				Expect(len(h["dependencies"].([]interface{}))).To(Equal(3))
 
 				processed := map[string]bool{}
