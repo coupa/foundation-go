@@ -129,7 +129,14 @@ func main() {
 
   //Register routes
   svr.Engine.GET("/test", someHandler)
-
+   
+  invoicesHandler := BaseCrudHandler{
+    PersistenceManager: persistence.NewPersistenceManagerMySql(session, reflect.TypeOf(models.Invoice))
+  } 
+  svr.Engine.GET("/invoices", invoicesHandler.FindMany)
+  svr.Engine.GET("/invoice/:id", invoicesHandler.FindOne)
+  svr.Engine.POST("/invoices", invoicesHandler.CreateOne)
+  
   svr.Engine.Run(":80") //svr.Engine.Run() without address parameter will run on ":8080"
 }
 ```
