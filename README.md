@@ -122,7 +122,7 @@ func main() {
     //Emitting statsd metric
     metrics.Increment("interesting.metric")
 
-    logging.RL(c).Info("This is logging with correlation ID")
+    logging.RL(c.Request, c.Writer).Info("This is logging with correlation ID")
 
     c.JSON(200, `{"he":"llo"}`)
   }
